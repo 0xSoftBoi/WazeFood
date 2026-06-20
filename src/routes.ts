@@ -69,6 +69,14 @@ export function registerRoutes(router: Router, app: App): Router {
     return ok({ query: q, results: app.catalog.search(q) });
   });
 
+  // Resolve a barcode or a line-item string to a canonical product (client-side scan helper).
+  router.get("/catalog/resolve", (ctx) => {
+    const barcode = ctx.query.get("barcode");
+    const text = ctx.query.get("text");
+    if (barcode === null && text === null) throw badRequest("barcode or text required");
+    return ok(app.matching.resolve({ barcode, text }));
+  });
+
   router.get("/prices/best", (ctx) => {
     const productId = ctx.query.get("productId");
     const lat = Number(ctx.query.get("lat"));
@@ -111,6 +119,9 @@ export function registerRoutes(router: Router, app: App): Router {
       kind: str(b, "kind") as ContributionType,
       productId: optStr(b, "productId") ?? null,
       reportedPrice: typeof b.reportedPrice === "number" ? b.reportedPrice : null,
+      barcode: optStr(b, "barcode") ?? null,
+      text: optStr(b, "text") ?? null,
+      mediaHash: optStr(b, "mediaHash") ?? null,
       lat: num(b, "lat"),
       lng: num(b, "lng"),
     });
@@ -214,6 +225,9 @@ export function registerRoutes(router: Router, app: App): Router {
       reportedPrice: typeof b.reportedPrice === "number" ? b.reportedPrice : null,
       aisle: optStr(b, "aisle") ?? null,
       via: (optStr(b, "via") as "glasses" | "web" | "app") ?? "glasses",
+      barcode: optStr(b, "barcode") ?? null,
+      text: optStr(b, "text") ?? null,
+      mediaHash: optStr(b, "mediaHash") ?? null,
       lat: num(b, "lat"),
       lng: num(b, "lng"),
     });

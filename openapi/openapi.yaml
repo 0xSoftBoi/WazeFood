@@ -88,6 +88,14 @@ paths:
       summary: Product search (records referral activation signal when authenticated)
       parameters: [{ name: q, in: query, schema: { type: string } }]
       responses: { "200": { description: ok } }
+  /catalog/resolve:
+    get:
+      summary: Resolve a barcode or cryptic line-item text to a canonical product (entity resolution)
+      parameters:
+        - { name: barcode, in: query, schema: { type: string } }
+        - { name: text, in: query, schema: { type: string } }
+      responses:
+        "200": { description: ok, content: { application/json: { schema: { type: object, properties: { productId: { type: string, nullable: true }, matchScore: { type: number }, method: { type: string, enum: [barcode, text, none] } } } } } }
   /prices/best:
     get:
       summary: Best nearby price (TAO projection read)
@@ -126,8 +134,11 @@ paths:
                 userId: { type: string }
                 storeId: { type: string }
                 kind: { type: string, enum: [price, receipt, shelf, clearance, oos, aisle, coupon] }
-                productId: { type: string }
+                productId: { type: string, description: "explicit product; omit to resolve via barcode/text" }
                 reportedPrice: { type: number }
+                barcode: { type: string, description: "UPC/EAN — resolved to a product, free perception" }
+                text: { type: string, description: "OCR'd/typed line item, e.g. GV WHP MILK" }
+                mediaHash: { type: string, description: "photo identity for cheap→expensive routing + dedup" }
                 lat: { type: number }
                 lng: { type: number }
       responses:

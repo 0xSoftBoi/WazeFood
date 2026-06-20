@@ -13,6 +13,10 @@ export type ConfidenceInput = {
   // The current trusted price for this (product, store), if any, for cross-verification.
   priorPrice: number | null;
   priorConfidence: number | null;
+  // Kept distinct (the memo): "product matched correctly" vs "price read correctly". Each is a
+  // multiplicative clamp in [0,1]; default 1 when not applicable (e.g. human-entered productId).
+  matchConfidence?: number;
+  extractionConfidence?: number;
 };
 
 export type ConfidenceResult = { confidence: number; accepted: boolean };
@@ -47,7 +51,10 @@ export function scoreConfidence(input: ConfidenceInput): ConfidenceResult {
   // Reputation pulls the score toward the contributor's trustworthiness (0.6..1.0 band).
   const rep = 0.6 + 0.4 * clamp01(input.reporterReputation);
   const agree = agreement(input.reportedPrice, input.priorPrice);
+  // Product-match and price-extraction quality (1 when not applicable).
+  const match = input.matchConfidence === undefined ? 1 : clamp01(input.matchConfidence);
+  const extract = input.extractionConfidence === undefined ? 1 : clamp01(input.extractionConfidence);
 
-  const confidence = clamp01(base * geo * rep * agree);
+  const confidence = clamp01(base * geo * rep * agree * match * extract);
   return { confidence, accepted: confidence >= ACCEPT_THRESHOLD };
 }

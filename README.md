@@ -92,7 +92,10 @@ so anti-scraping lives on the read path and bulk data is a separate B2B product.
 Architecture **plan + runnable backend scaffold**. The modular monolith implements the core
 value loop (anonymous onboarding, search, TAO price reads, idempotent crowdsourced ingestion +
 confidence scoring, price-drop alerts, gamification, token-gated explainable optimization, and
-referral activation) with 18 passing tests and a clean typecheck. Storage/cache/bus run on
+referral activation), an **AR/smart-glasses scene layer** (price/aisle cards, deal pins, route
+line, per device tier + POV-glasses capture), and **barcode-first ingestion** (entity-resolution
+matching + cheap→expensive perception routing with cost accounting + media-hash dedup) — with 33
+passing tests and a clean typecheck. Storage/cache/bus run on
 in-memory adapters today and swap to Postgres+PostGIS / Redis / Kafka via the documented seams
 (`db/migrations/`, `docker-compose.yml`). Next: persistence adapters, mobile client, and the
 service extractions in [`docs/scaling-playbook.md`](docs/scaling-playbook.md).

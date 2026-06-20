@@ -67,6 +67,14 @@ export class CatalogService {
     return this.products.get(id);
   }
 
+  getByUpc(upc: string): Product | undefined {
+    return this.products.findOne((p) => p.upc === upc);
+  }
+
+  listProducts(): Product[] {
+    return this.products.all();
+  }
+
   getStore(id: string): Store | undefined {
     return this.stores.get(id);
   }

@@ -18,6 +18,8 @@ import { OptimizationService } from "./modules/optimization/service.ts";
 import { ReferralService } from "./modules/referral/service.ts";
 import { ListsService } from "./modules/lists/service.ts";
 import { ARSceneService } from "./modules/arscene/service.ts";
+import { MatchingService } from "./modules/matching/service.ts";
+import { RoutingPerception } from "./modules/ingestion/perception.ts";
 
 export type App = ReturnType<typeof buildApp>;
 
@@ -43,6 +45,14 @@ export function buildApp(config: Config = loadConfig(), clock: Clock = systemClo
     },
   });
 
+  const matching = new MatchingService({
+    catalog: {
+      getByUpc: (upc) => { const p = catalog.getByUpc(upc); return p === undefined ? undefined : { id: p.id }; },
+      listProducts: () => catalog.listProducts().map((p) => ({ id: p.id, name: p.name, brand: p.brand })),
+    },
+  });
+  const perception = new RoutingPerception();
+
   const ingestion = new IngestionService({
     bus,
     h3Resolution,
@@ -50,6 +60,8 @@ export function buildApp(config: Config = loadConfig(), clock: Clock = systemClo
     reputation: { reputation: (userId) => gamification.reputation(userId) },
     priorPrice: { getProjection: (p, s) => pricing.getProjection(p, s) },
     locations: { setAisle: (storeId, productId, section) => catalog.setAisle(storeId, productId, section) },
+    matching: { resolve: (i) => matching.resolve(i) },
+    perception: { perceive: (i) => perception.perceive(i) },
   });
 
   // Meter adapter reused by optimization callers (free cart-optimize tokens).
@@ -112,5 +124,5 @@ export function buildApp(config: Config = loadConfig(), clock: Clock = systemClo
   bus.on("deal.reported", (e) => { alerts.onDealReported(e); });
   bus.on("contribution.received", (e) => { gamification.awardForContribution(e.userId, e.kind, metroOf(e.storeId)); });
 
-  return { config, clock, cache, bus, identity, catalog, pricing, ingestion, entitlements, gamification, alerts, optimization, referral, lists, arscene };
+  return { config, clock, cache, bus, identity, catalog, pricing, ingestion, entitlements, gamification, alerts, optimization, referral, lists, arscene, matching, perception };
 }

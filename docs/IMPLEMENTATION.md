@@ -44,9 +44,12 @@ src/
 
   modules/                  one folder per bounded context (docs/ARCHITECTURE.md §4)
     identity/               anonymous-first users & devices
-    catalog/                products, stores, swaps, product match
+    catalog/                products, stores, swaps, aisle locations, UPC lookup
+    matching/               entity resolution: barcode→exact, cryptic text→normalized fuzzy
     pricing/                TAO projection + H3 follower cache + drop detection
-    ingestion/              idempotent capture + geofence + confidence engine (Waze/truth-discovery)
+    ingestion/              idempotent capture + media-hash dedup + geofence + perception
+                            routing (cheap→expensive, cost-accounted) + confidence engine
+    arscene/                AR/glasses scene assembly (price cards, deal pins, route), per-tier
     optimization/           tiered, token-gated optimizer + explainable breakdown (Meituan-style)
     alerts/                 watchlist + kRing watcher fan-out
     entitlements/           freemium plan + token metering (checked once, reused everywhere)
@@ -80,3 +83,5 @@ karma/leaderboard → token-gated, explainable optimization.
 | inline confidence scoring | async queue workers + replay (re-score on model change) |
 | `Bearer user:<id>` auth | OIDC/JWT verification |
 | heuristic optimizer | OR/ILP planning tier behind the cache |
+| `matching` token-similarity | embeddings + ANN blocking over `products.embedding` (pgvector) |
+| `RoutingPerception` stub extractor | real barcode (on-device) + cheap VLM + escalation, same routing/cost model |

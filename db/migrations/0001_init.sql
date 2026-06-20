@@ -99,7 +99,10 @@ CREATE TABLE contributions (
   type            TEXT NOT NULL,            -- price|receipt|shelf|clearance|oos|aisle|coupon
   product_id      TEXT,
   reported_price  NUMERIC,
+  match_method    TEXT NOT NULL DEFAULT 'explicit', -- barcode|text|none|explicit (entity resolution)
+  match_score     NUMERIC NOT NULL DEFAULT 1,
   media_uri       TEXT,
+  media_hash      TEXT,                     -- dedup re-uploaded photos + cache perception results
   location        geography(Point),
   geofence_valid  BOOLEAN NOT NULL DEFAULT false,
   h3_r8           BIGINT NOT NULL,
@@ -108,6 +111,7 @@ CREATE TABLE contributions (
   confidence      NUMERIC,
   status          TEXT NOT NULL DEFAULT 'pending'  -- pending|scored|rejected|duplicate|disputed
 );
+CREATE UNIQUE INDEX contributions_media_hash_uix ON contributions (media_hash) WHERE media_hash IS NOT NULL;
 
 -- Transactional outbox (domain row + event committed together) ---------------
 CREATE TABLE outbox (

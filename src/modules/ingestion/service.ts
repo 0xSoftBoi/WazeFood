@@ -19,6 +19,9 @@ export type Contribution = {
   kind: ContributionType;
   productId: string | null;
   reportedPrice: number | null;
+  matchMethod: "barcode" | "text" | "none" | "explicit";
+  matchScore: number;
+  mediaHash: string | null;
   lat: number;
   lng: number;
   cell: string;
@@ -38,6 +41,10 @@ export type SubmitInput = {
   reportedPrice?: number | null;
   aisle?: string | null; // for kind="aisle": where the product lives in the store
   via?: "app" | "glasses" | "web"; // capture channel (POV glasses feed the same pipeline)
+  // Raw capture signals — resolved to a product via Matching + Perception when productId is absent.
+  barcode?: string | null;
+  text?: string | null;       // OCR'd / typed line item, e.g. "GV WHP MILK"
+  mediaHash?: string | null;  // photo identity, for cheap→expensive routing + dedup
   lat: number;
   lng: number;
 };
@@ -58,6 +65,12 @@ export type PriorPricePort = {
   getProjection: (productId: string, storeId: string) => { price: number; confidence: number } | undefined;
 };
 export type LocationPort = { setAisle: (storeId: string, productId: string, section: string) => void };
+export type MatchingPort = {
+  resolve: (input: { barcode?: string | null; text?: string | null }) => { productId: string | null; matchScore: number; method: "barcode" | "text" | "none" };
+};
+export type PerceptionPort = {
+  perceive: (input: { barcode?: string | null; text?: string | null; mediaHash?: string | null; reportedPrice?: number | null }) => { extractionConfidence: number; price: number | null; routes: string[] };
+};
 
 const GEOFENCE_RADIUS_M = 200; // "was the user actually at the store?"
 
@@ -70,6 +83,8 @@ export class IngestionService {
     reputation: ReputationPort;
     priorPrice: PriorPricePort;
     locations: LocationPort;
+    matching: MatchingPort;
+    perception: PerceptionPort;
     h3Resolution: number;
   };
   constructor(deps: {
@@ -78,6 +93,8 @@ export class IngestionService {
     reputation: ReputationPort;
     priorPrice: PriorPricePort;
     locations: LocationPort;
+    matching: MatchingPort;
+    perception: PerceptionPort;
     h3Resolution: number;
   }) {
     this.deps = deps;
@@ -95,6 +112,11 @@ export class IngestionService {
     // 1) Idempotency: same key → return the already-processed record, do not double-count.
     const existing = this.contributions.findOne((c) => c.idempotencyKey === input.idempotencyKey);
     if (existing !== undefined) return existing;
+    // Media-hash dedup: the same photo (re-uploaded on a flaky network) is processed once.
+    if (input.mediaHash != null && input.mediaHash.length > 0) {
+      const sameMedia = this.contributions.findOne((c) => c.mediaHash === input.mediaHash);
+      if (sameMedia !== undefined) return sameMedia;
+    }
 
     const store = this.deps.stores.get(input.storeId);
     if (store === undefined) throw badRequest(`unknown store ${input.storeId}`);
@@ -103,15 +125,39 @@ export class IngestionService {
     const cell = cellOf(at, this.deps.h3Resolution);
     const geofenceValid = distanceMeters(at, { lat: store.lat, lng: store.lng }) <= GEOFENCE_RADIUS_M;
 
-    // 2) Capture (status pending). The transactional outbox would commit row + event here.
+    // 2a) Perception routing (barcode/client free; cheap OCR else; escalate only if low-conf).
+    const percept = this.deps.perception.perceive({
+      barcode: input.barcode,
+      text: input.text,
+      mediaHash: input.mediaHash,
+      reportedPrice: input.reportedPrice,
+    });
+
+    // 2b) Resolve to a canonical product. Explicit productId is trusted (human-specified);
+    //     otherwise barcode/text are matched, contributing a separate matchScore.
+    let productId = input.productId ?? null;
+    let matchMethod: Contribution["matchMethod"] = input.productId != null ? "explicit" : "none";
+    let matchScore = input.productId != null ? 1 : 0;
+    if (productId === null && (input.barcode != null || input.text != null)) {
+      const m = this.deps.matching.resolve({ barcode: input.barcode, text: input.text });
+      productId = m.productId;
+      matchMethod = m.method;
+      matchScore = m.matchScore;
+    }
+    const reportedPrice = input.reportedPrice ?? percept.price;
+
+    // 2c) Capture (status pending). The transactional outbox would commit row + event here.
     const contribution = this.contributions.insert({
       id: newId("ctr"),
       idempotencyKey: input.idempotencyKey,
       userId: input.userId,
       storeId: input.storeId,
       kind: input.kind,
-      productId: input.productId ?? null,
-      reportedPrice: input.reportedPrice ?? null,
+      productId,
+      reportedPrice,
+      matchMethod,
+      matchScore,
+      mediaHash: input.mediaHash ?? null,
       lat: input.lat,
       lng: input.lng,
       cell,
@@ -145,6 +191,11 @@ export class IngestionService {
       reportedPrice: contribution.reportedPrice,
       priorPrice: prior?.price ?? null,
       priorConfidence: prior?.confidence ?? null,
+      // Product-match and price-read quality as separate clamps. Only a fuzzy *text* match
+      // dampens confidence; barcode/explicit are trusted (=1), and a no-product contribution
+      // has nothing to doubt (=1). extractionConfidence applies only when perception ran.
+      matchConfidence: contribution.matchMethod === "text" ? contribution.matchScore : 1,
+      extractionConfidence: percept.extractionConfidence === 0 ? undefined : percept.extractionConfidence,
     });
 
     const scored = this.contributions.update(contribution.id, {
