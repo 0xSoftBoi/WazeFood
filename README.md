@@ -13,11 +13,27 @@ many metros** without a rewrite.
 
 | Doc | What it covers |
 |---|---|
+| [`docs/proven-patterns.md`](docs/proven-patterns.md) | **How Netflix, Meta, Cloudflare, Uber, Waze & AWS solve SmartCart's exact problems** — each pattern mapped onto a workload, with citations. Start here for the "why." |
 | [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md) | The full plan: workloads, principles, bounded contexts, data layer, mobile/offline, geo scaling, anti-scraping, security, tech stack, roadmap |
 | [`docs/diagrams/system-context.md`](docs/diagrams/system-context.md) | C4 system + container diagrams and key request flows (Mermaid) |
 | [`docs/data-model.md`](docs/data-model.md) | Core schemas, Redis/OpenSearch/warehouse usage, domain event contract |
 | [`docs/scaling-playbook.md`](docs/scaling-playbook.md) | Per-component bottlenecks, in-place scaling, and extraction triggers |
 | [`docs/roadmap.md`](docs/roadmap.md) | Phased build order mapped to the product's MVP rollout |
+
+## Grounded in how hyperscalers actually do it
+
+This isn't an abstract design — every load-bearing decision maps to a pattern a company at
+planetary scale proved in public ([full evidence + citations](docs/proven-patterns.md)):
+
+| SmartCart problem | Proven by | Pattern adopted |
+|---|---|---|
+| "Best nearby price" — read-dominated graph lookups | **Meta TAO** | Read-optimized projection + two-tier follower/leader cache, write-through |
+| "Stores / deals / watchers within N miles" | **Uber H3** | Hexagonal geo-cells as shard + cache + `kRing` query key |
+| Stay up on bad networks; never cascade failure | **Netflix** | Circuit breakers + fallbacks, active-active, precompute, chaos |
+| Protect the data graph; serve fast globally | **Cloudflare** | Edge read path + bot-score anti-scraping + edge rate limiting |
+| Trust noisy crowd data without being gamed | **Waze** | Reputation-weighted confidence + cross-verification + Sybil defense |
+| Contain failure to one city; scale city-by-city | **AWS / DoorDash** | The **metro = a cell**; linear scale by adding cells |
+| Never lose/double-count an untrusted write | **Stripe / Kafka** | Idempotency keys + transactional outbox + idempotent consumers |
 
 ## The one-paragraph version
 

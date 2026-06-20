@@ -36,8 +36,8 @@ product_swaps(product_id, swap_product_id, kind,              -- exact|store_bra
               avg_savings numeric, support_count int);        -- "others swap X for Y"
 
 -- Stores (PostGIS) -------------------------------------------------------
-stores(id, retailer_id, name, geom geography(Point),          -- GiST index for radius/geofence
-       address, metro_id, geohash);                           -- geohash = shard/cache key
+stores(id, retailer_id, name, geom geography(Point),          -- GiST index for exact radius/geofence
+       address, metro_id, h3_r8 bigint);                      -- Uber H3 cell = shard/cache/query key
 
 -- Pricing projection -----------------------------------------------------
 current_price(product_id, store_id,
@@ -45,15 +45,21 @@ current_price(product_id, store_id,
               confidence numeric,                             -- 0..1, surfaced in UI
               as_of timestamptz, source,                      -- receipt|shelf|manual|crawl
               PRIMARY KEY(product_id, store_id));
--- index: (product_id, metro_id) and a Redis hot-cache keyed by geo cell
+-- index: (product_id, h3_r8) — shard/index by H3 cell; Redis follower cache keyed by H3 cell
+-- read path is TAO-shaped: Redis follower -> regional leader/replica -> Postgres; write-through
 
 -- Crowdsourced contributions (immutable) --------------------------------
-contributions(id, user_id, device_id, store_id, type,        -- price|receipt|shelf|clearance|oos|aisle|coupon
+contributions(id, idempotency_key UNIQUE,                     -- client-generated; exactly-once on flaky networks
+              user_id, device_id, store_id, type,            -- price|receipt|shelf|clearance|oos|aisle|coupon
               product_id NULL, reported_price numeric NULL,
               media_uri NULL,                                 -- object store
-              location geography(Point), geofence_valid bool, -- "was the user at the store?"
+              location geography(Point), geofence_valid bool, -- "was the user at the store?" (Waze cross-verify)
+              h3_r8 bigint,                                   -- geo cell for sharding/scoring
               raw_payload jsonb, created_at,
-              confidence numeric NULL, status);               -- pending|scored|rejected|duplicate
+              confidence numeric NULL, status);               -- pending|scored|rejected|duplicate|disputed
+
+-- Transactional outbox: domain row + event committed together, relay drains to the stream
+outbox(id, aggregate, event_type, payload jsonb, created_at, published_at NULL);
 
 -- Lists & households -----------------------------------------------------
 lists(id, owner_id, household_id NULL, name, routing_mode, created_at, updated_at);
@@ -86,12 +92,13 @@ price_history(product_id, store_id, ts, price, unit_price, source, confidence);
 ## Redis (hot, ephemeral)
 
 ```
-price:{geohash}:{product_id}        -> {price, confidence, as_of, store}   # hot read cache, short TTL
+price:{h3}:{product_id}             -> {price, confidence, as_of, store}    # TAO follower cache, short TTL
 meter:{user_id}:{bucket}:{period}   -> counter (TTL to period end)          # freemium tokens
-lb:weekly:{metro}                   -> ZSET(user_id -> karma)               # leaderboards
+lb:weekly:{metro}                   -> ZSET(user_id -> karma)               # leaderboards (Waze-style rep)
 lb:monthly:{metro} / lb:alltime:{metro}
-watchers:{product_id}:{geohash}     -> SET(user_id)                         # alert fan-out index
-ratelimit:{device_id}:{route}       -> sliding-window counter               # anti-scrape
+watchers:{product_id}:{h3}          -> SET(user_id)                         # alert fan-out index (kRing-queried)
+ratelimit:{device_id}:{route}       -> sliding-window counter               # edge anti-scrape (bot score)
+idem:{idempotency_key}              -> processed marker (TTL)                # exactly-once ingestion dedup
 ```
 
 ## OpenSearch
@@ -117,8 +124,8 @@ early success metrics (2nd-list rate, avg savings, receipts uploaded, referrals/
 contribution.received     {contribution_id, user_id, store_id, type, geofence_valid}
 contribution.scored       {contribution_id, confidence, accepted}
 price.updated             {product_id, store_id, price, confidence, as_of, source}
-price.dropped             {product_id, store_id, old, new, geohash}      → Alerts
-deal.reported             {store_id, product_id?, kind, geohash}         → Alerts/feed
+price.dropped             {product_id, store_id, old, new, h3}            → Alerts
+deal.reported             {store_id, product_id?, kind, h3}              → Alerts/feed
 product.created           {product_id, source:"user"}                    → Catalog/Search index
 referral.activated        {referrer_id, referred_user_id}                → Entitlements
 reward.granted            {user_id, feature, source, expires_at}

@@ -60,7 +60,8 @@ swap click-through, receipts uploaded, "would be disappointed if it went away."
 3. **Alerts** (fan-out volume)
 4. **Pricing/Search read path** (read QPS / geo-distributed caching)
 
-**Also:** geo-cell sharding of pricing/contribution data (metro/geohash), OpenSearch +
+**Also:** H3 geo-cell sharding of pricing/contribution data with **the metro as a cell**
+(blast-radius isolation, cell-aware progressive deploys, chaos game-days), OpenSearch +
 dedicated vector search at scale, multi-region read replicas + edge caches as latency
 requires, hardened **anti-scraping** on the read path. Tips/payments, data export
 (rate-limited), households at scale.

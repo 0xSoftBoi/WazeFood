@@ -29,16 +29,17 @@ and the signal to extract + scale it independently.
 
 ### Pricing & Geo read path — *highest QPS*
 - **Bottleneck:** read QPS on "best nearby price," cache stampedes on popular cells.
-- **In place:** Redis hot cache keyed by geohash; current-price as projection (never
-  aggregate raw reports live); Postgres read replicas; request coalescing.
+- **In place:** TAO-style two-tier cache — Redis **follower** keyed by **H3 cell** → regional
+  **leader**/read-replica → Postgres; current-price as write-through projection (never aggregate
+  raw reports live); request coalescing to prevent stampedes on hot cells.
 - **Extract when:** read QPS dominates the box or you need geo-distributed read caches.
 - **Then:** Pricing read service + per-metro cache tier; multi-region read replicas;
   edge cache for the hottest cells.
 
 ### Alerts & Watchlist — *fan-out spikes*
 - **Bottleneck:** one popular price drop → fan-out to many watchers.
-- **In place:** inverted watcher index (`watchers:{product}:{geohash}`), batch+dedup,
-  quiet hours, per-user rate caps; consume `price.dropped` off the bus.
+- **In place:** inverted watcher index (`watchers:{product}:{h3}`, queried via `kRing` for
+  radius), batch+dedup, quiet hours, per-user rate caps; consume `price.dropped` off the bus.
 - **Extract when:** push volume or fan-out latency needs isolation.
 - **Then:** dedicated Alerts service + notification workers; sharded watcher index.
 
@@ -60,7 +61,10 @@ and the signal to extract + scale it independently.
 2. **Split Timescale/time-series out** of the primary when history writes/reads compete
    with OLTP.
 3. **Geo/metro partitioning & sharding** of pricing/contribution data — the natural shard
-   key is metro/geohash; data is intrinsically local, so this scales near-linearly per city.
+   key is the **Uber H3 cell** (and metro); data is intrinsically local, so this scales
+   near-linearly per city. **Each metro is a cell** (AWS/DoorDash cell-based architecture):
+   its own DB partition, cache, and capacity, with failure contained to that city and new
+   cities added as new cells via **cell-aware progressive deploys**.
 4. **Dedicated vector store** when pgvector outgrows the primary.
 5. **Multi-region** read replicas + edge caches when latency/availability require it —
    single region until then.

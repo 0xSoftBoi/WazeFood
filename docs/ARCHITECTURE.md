@@ -9,10 +9,17 @@ technical architecture. It is written to be **pragmatic at MVP scale (the first
 to millions of shoppers across many metros** without a rewrite.
 
 - `ARCHITECTURE.md` (this file) — the full plan.
+- [`docs/proven-patterns.md`](proven-patterns.md) — **how Netflix, Meta, Cloudflare, Uber, Waze & AWS solve these exact problems**, mapped onto SmartCart (read this for the "why").
 - [`docs/diagrams/system-context.md`](diagrams/system-context.md) — system + container diagrams.
 - [`docs/data-model.md`](data-model.md) — core data stores and schemas.
 - [`docs/scaling-playbook.md`](scaling-playbook.md) — when/how to scale each component.
 - [`docs/roadmap.md`](roadmap.md) — phased build order mapped to the product MVP plan.
+
+> **Provenance:** every major decision below traces to a pattern a hyperscaler proved in
+> public — TAO (read-optimized graph cache), H3 (geo-cells), Netflix (resilience/active-active),
+> Cloudflare (edge anti-scraping), Waze (crowdsourced trust), cell-based architecture
+> (blast-radius isolation). See [`docs/proven-patterns.md`](proven-patterns.md) for the
+> evidence and citations.
 
 ---
 
@@ -179,13 +186,21 @@ and the events it publishes.
 - Resolves barcode / text / image / voice inputs to canonical products.
 - Publishes `product.matched`, `product.created` (from "add a product that isn't in the app").
 
-### 4.3 Pricing & Geo Index *(hottest read path)*
+### 4.3 Pricing & Geo Index *(hottest read path)* — **TAO-shaped, H3-keyed**
 - "Best nearby price" for a product at a ZIP/location/radius, with confidence + freshness.
-- Current price = a **materialized, cached projection** built from ingestion events;
-  never computed live from raw reports on the read path.
-- Backed by **PostGIS** (store locations, radius queries) + **Redis** (hot price cells)
-  + **time-series store** (history for charts/trends).
-- Publishes `price.updated`, `price.dropped` (the trigger for alerts).
+- This is SmartCart's **Meta-TAO**: a massively read-dominated lookup over a price/product
+  graph. Current price = a **materialized, cached projection** built from ingestion events,
+  **never computed live** from raw reports — exactly TAO's "make writes slow so reads are
+  trivial" trade.
+- **Two-tier cache like TAO:** Redis **follower** cache per metro → regional **leader**/read
+  replica → Postgres; a follower miss fills from the leader. **Write-through** on ingestion
+  gives the contributor read-after-write; everyone else is eventually consistent.
+- **Geo keyed by Uber H3 cells** (not geohash): the H3 cell ID is the shard key, the Redis
+  hot-cell key, and the radius-query unit (`kRing`); hierarchical parent cells power
+  metro/category roll-ups and the deal feed for free. **PostGIS** still handles exact point
+  geometry + geofencing; **time-series store** holds history for charts/trends.
+- Publishes `price.updated` (doubles as the cross-region cache-invalidation message, à la
+  Netflix EVCache), `price.dropped` (the trigger for alerts).
 
 ### 4.4 Crowdsource Ingestion & Confidence Engine *(core moat)*
 - Accepts: price corrections, receipts, shelf photos, clearance/markdown reports,
@@ -193,12 +208,18 @@ and the events it publishes.
 - **Pipeline:** capture → **location-validate** (geofence: was the user at the store?)
   → enqueue → async OCR/vision (receipt parse, shelf-tag read, product match)
   → **dedup & reconcile** → **confidence score** → publish `price.updated`.
-- **Confidence scoring** combines source type (receipt > shelf photo > manual),
-  contributor reputation (karma/badges), agreement with other recent reports,
-  recency, and store/location validation. This is the single most important
-  algorithm in the company and gets its own iteration loop.
-- Designed for **idempotent, replayable** ingestion so scoring can be re-run as the
-  model improves without re-collecting data.
+- **Confidence scoring is Waze-shaped:** reputation-weighted (a high-karma "Verified Price
+  Hunter" ≈ a "Royalty Wazer") + **cross-verified against independent signal** (other recent
+  reports, receipt OCR, geofence location-validation) before promotion to `current_price`.
+  Agreement raises confidence; disagreement opens a low-confidence/dispute state — never
+  silently overwrite verified data. This is the single most important algorithm in the company.
+- **Sybil/fraud defense is a first-class input** (device/phone dedup, velocity, SMS identity),
+  not a bolt-on — it protects contribution quality, exactly as the Waze literature prescribes.
+- **Exactly-once ingestion:** client-generated **idempotency key** per contribution (safe
+  retries on bad in-store networks — no double karma/price), **transactional outbox** so events
+  are never lost, and **idempotent, replayable** consumers keyed by `(product, store, H3 cell)`
+  so scoring can be re-run as the model improves without re-collecting data; **DLQ + manual
+  review** for unparseable/abusive submissions.
 
 ### 4.5 Optimization & Routing *(CPU-heavy, token-gated)*
 - Item-level optimization, full-cart optimization, store-by-store split, multi-stop
@@ -309,14 +330,20 @@ The MVP launches in 4 metros (SLC, DMV, Nashville, Seattle) and the data is inte
 **local** — a price in Seattle is irrelevant to a shopper in Nashville. That locality is
 the primary scaling lever.
 
-- **Geo-cell sharding.** Partition pricing/geo data by **metro / geohash cell**. Hot
-  read caches are keyed by cell, so cache and DB load scale horizontally by adding metros
-  rather than getting hotter per metro.
-- **Metro = unit of rollout and capacity.** New city ≈ new partition + seeded store list,
-  not a schema change. This matches the "more valuable in each city" network-effect thesis.
-- **Single region until traffic justifies more.** Start in one cloud region close to the
-  first metros. Move to multi-region read replicas / edge caching when latency or
-  availability demands it — driven by the scaling playbook, not by default.
+- **H3 geo-cell sharding (Uber's pattern).** Partition pricing/geo data by **Uber H3 cell**
+  (64-bit hierarchical hexagons). The cell ID is the shard key *and* the hot-cache key, so
+  load scales horizontally by adding metros instead of getting hotter per metro. Radius
+  queries use `kRing`; parent-cell truncation gives metro/category roll-ups for free.
+- **The metro is a *cell* (AWS/DoorDash cell-based architecture).** Each metro is a
+  self-contained cell with its **own DB partition, cache tier, and capacity** — a failure in
+  Seattle cannot affect Nashville (bulkhead). **New city = add a cell** (seed stores), not a
+  schema change or re-shard. This maps 1:1 onto the "more valuable in each city" thesis and
+  gives **linear, low-blast-radius scale**. Deploys are **cell-aware**: ship risky changes to
+  one metro-cell first, bake, auto-rollback on alarm, then progress.
+- **Single region until traffic justifies more (Netflix's path).** Start in one cloud region;
+  Netflix itself wasn't born active-active. But the **cross-region cache-invalidation mechanism
+  is wired from day one** — `price.updated` *is* the EVCache/SQS invalidation message — so
+  flipping on multi-region active-active later is a config change, not a rewrite.
 
 ---
 
@@ -325,10 +352,12 @@ the primary scaling lever.
 The data graph **is** the company; the brain dump explicitly calls out competitors trying
 to extract it and the dynamic-pricing/"surveillance pricing" narrative the product fights.
 
-- **Anti-scraping on the read path:** authenticated + attested clients, per-device/per-account
-  rate limits, geo-coherence checks (a single account "shopping" in 20 cities is bulk
-  extraction), anomaly detection on read velocity, and **no bulk price export through
-  consumer APIs**. Exports are rate-limited and watermarked.
+- **Anti-scraping as a Cloudflare-style edge bot-score system** (not a rate-limit afterthought):
+  score each read from layered signals — device attestation, per-device/account velocity, and
+  **H3 geo-coherence** (one account "shopping" across 20 distant cells is extraction, not
+  shopping) — then block / challenge / rate-limit on the score. Run the read path + hot H3 cells
+  + images at the **edge**, which also serves "fast on bad networks." **No bulk price export
+  through consumer APIs**; exports are rate-limited and watermarked.
 - **Bulk data is a separate B2B product**, never an accidental consumer feature — exactly
   as the export section warns.
 - **Privacy by design:** minimize PII; encrypt receipts/location/household data at rest;
@@ -351,9 +380,13 @@ to extract it and the dynamic-pricing/"surveillance pricing" narrative the produ
   metrics per module, and the **product KPI pipeline** (referral funnel, k-factor,
   activation, paywall cannibalization, SMS funnel) landing in the warehouse — these KPIs
   are explicit product requirements, so instrument the events that feed them up front.
-- **Reliability:** the async backbone absorbs ingestion/optimization spikes; the read path
-  degrades gracefully to last-known cached prices (offline-friendly all the way to the
-  server); idempotent, replayable event consumers.
+- **Reliability (Netflix patterns, made explicit):** every remote dependency (optimizer,
+  maps/gas, OCR) sits behind a **circuit breaker with a fallback** — optimizer down → serve
+  last-known cached cart plan; pricing degraded → serve on-device last-known price with its
+  `as_of` label. **Bulkheads** (the metro-cells) stop one failure spreading. The async backbone
+  absorbs ingestion/optimization spikes; consumers are idempotent and replayable. In Phase 2,
+  **chaos game-days** inject failure (queue backups, a dead metro-cache, OCR timeouts) to prove
+  resilience rather than assume it.
 
 ---
 
