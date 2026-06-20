@@ -1,0 +1,22 @@
+{
+  "name": "smartcart",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "SmartCart — Waze for grocery prices. Modular-monolith backend scaffold.",
+  "engines": {
+    "node": ">=22.18.0"
+  },
+  "scripts": {
+    "start": "node src/main.ts",
+    "dev": "node --watch src/main.ts",
+    "test": "node --test --experimental-test-coverage 'src/**/*.test.ts' 'test/**/*.test.ts'",
+    "test:watch": "node --test --watch 'src/**/*.test.ts'",
+    "typecheck": "tsc --noEmit",
+    "smoke": "node scripts/smoke.ts"
+  },
+  "devDependencies": {
+    "@types/node": "^22.20.0",
+    "typescript": "^5.6.0"
+  }
+}

@@ -1,0 +1,181 @@
+openapi: 3.1.0
+info:
+  title: SmartCart BFF API
+  version: 0.1.0
+  description: >
+    Backend-for-frontend over the SmartCart modular monolith. Endpoints are coarse and
+    screen-shaped. All requests carry an `x-device-id`; authenticated requests add
+    `Authorization: Bearer user:<id>`. See docs/ARCHITECTURE.md.
+servers:
+  - url: http://localhost:3000
+components:
+  parameters:
+    DeviceId:
+      name: x-device-id
+      in: header
+      required: true
+      schema: { type: string }
+  schemas:
+    BestPrice:
+      type: object
+      properties:
+        found: { type: boolean }
+        productId: { type: string }
+        storeId: { type: string }
+        price: { type: number }
+        confidence: { type: number }
+        asOf: { type: string, format: date-time }
+        distanceMeters: { type: number }
+    CartPlan:
+      type: object
+      properties:
+        mode: { type: string, enum: [chill, balanced, max] }
+        locked: { type: boolean, description: "true when a free user is out of optimization tokens" }
+        baselineStoreId: { type: string }
+        baselineCost: { type: number }
+        optimizedCost: { type: number }
+        estimatedSavings: { type: number }
+        breakdown:
+          type: object
+          properties:
+            productSwaps: { type: number }
+            storeDifferences: { type: number }
+            coupons: { type: number }
+            gasEstimate: { type: number }
+    Contribution:
+      type: object
+      properties:
+        id: { type: string }
+        status: { type: string, enum: [pending, scored, rejected, duplicate] }
+        confidence: { type: number, nullable: true }
+        geofenceValid: { type: boolean }
+paths:
+  /health:
+    get:
+      summary: Liveness
+      responses: { "200": { description: ok } }
+  /users:
+    post:
+      summary: Create an anonymous user (anonymous-first onboarding)
+      parameters: [{ $ref: "#/components/parameters/DeviceId" }]
+      requestBody:
+        content: { application/json: { schema: { type: object, properties: { metro: { type: string }, platform: { type: string } } } } }
+      responses: { "201": { description: created } }
+  /users/{id}/verify-phone:
+    post:
+      summary: Mark phone verified (re-evaluates any pending referral activation)
+      parameters: [{ name: id, in: path, required: true, schema: { type: string } }]
+      responses: { "200": { description: ok }, "404": { description: not found } }
+  /users/{id}/location:
+    post:
+      summary: Set ZIP / metro
+      parameters: [{ name: id, in: path, required: true, schema: { type: string } }]
+      requestBody:
+        content: { application/json: { schema: { type: object, required: [zip], properties: { zip: { type: string }, metro: { type: string } } } } }
+      responses: { "200": { description: ok } }
+  /users/{id}/entitlements:
+    get:
+      summary: Plan + token usage
+      parameters: [{ name: id, in: path, required: true, schema: { type: string } }]
+      responses: { "200": { description: ok } }
+  /users/{id}/notifications:
+    get:
+      summary: Price-drop / deal notifications
+      parameters: [{ name: id, in: path, required: true, schema: { type: string } }]
+      responses: { "200": { description: ok } }
+  /search:
+    get:
+      summary: Product search (records referral activation signal when authenticated)
+      parameters: [{ name: q, in: query, schema: { type: string } }]
+      responses: { "200": { description: ok } }
+  /prices/best:
+    get:
+      summary: Best nearby price (TAO projection read)
+      parameters:
+        - { name: productId, in: query, required: true, schema: { type: string } }
+        - { name: lat, in: query, required: true, schema: { type: number } }
+        - { name: lng, in: query, required: true, schema: { type: number } }
+        - { name: radius, in: query, schema: { type: number } }
+      responses:
+        "200": { description: ok, content: { application/json: { schema: { $ref: "#/components/schemas/BestPrice" } } } }
+  /lists:
+    post:
+      summary: Create a grocery list
+      responses: { "201": { description: created } }
+  /lists/{id}:
+    get:
+      summary: Get a list with items
+      parameters: [{ name: id, in: path, required: true, schema: { type: string } }]
+      responses: { "200": { description: ok }, "404": { description: not found } }
+  /lists/{id}/items:
+    post:
+      summary: Add an item to a list
+      parameters: [{ name: id, in: path, required: true, schema: { type: string } }]
+      responses: { "201": { description: created } }
+  /contributions:
+    post:
+      summary: Submit a crowdsourced contribution (idempotent, geofence-validated, scored)
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [idempotencyKey, userId, storeId, kind, lat, lng]
+              properties:
+                idempotencyKey: { type: string }
+                userId: { type: string }
+                storeId: { type: string }
+                kind: { type: string, enum: [price, receipt, shelf, clearance, oos, aisle, coupon] }
+                productId: { type: string }
+                reportedPrice: { type: number }
+                lat: { type: number }
+                lng: { type: number }
+      responses:
+        "201": { description: created, content: { application/json: { schema: { $ref: "#/components/schemas/Contribution" } } } }
+  /optimize:
+    post:
+      summary: Optimize a cart (token-gated; returns an explainable savings breakdown)
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [userId, lat, lng, items]
+              properties:
+                userId: { type: string }
+                lat: { type: number }
+                lng: { type: number }
+                mode: { type: string, enum: [chill, balanced, max] }
+                items:
+                  type: array
+                  items: { type: object, properties: { productId: { type: string }, qty: { type: number } } }
+      responses:
+        "200": { description: ok, content: { application/json: { schema: { $ref: "#/components/schemas/CartPlan" } } } }
+  /watches:
+    post:
+      summary: Add a watchlist item (free users limited to 3)
+      responses: { "201": { description: created }, "402": { description: watch limit reached } }
+  /leaderboard:
+    get:
+      summary: Contributor leaderboard
+      parameters:
+        - { name: window, in: query, schema: { type: string, enum: [weekly, monthly, alltime] } }
+        - { name: metro, in: query, schema: { type: string } }
+      responses: { "200": { description: ok } }
+  /referrals:
+    post:
+      summary: Create a referral invite
+      responses: { "201": { description: created } }
+  /referrals/open:
+    post:
+      summary: Record a referred user opening the link
+      responses: { "200": { description: ok }, "404": { description: bad token } }
+  /referrals/evaluate:
+    post:
+      summary: Evaluate a referred user's activation
+      responses: { "200": { description: ok } }
+  /referrals/{referrerId}/progress:
+    get:
+      summary: Referral progress (activated / required)
+      parameters: [{ name: referrerId, in: path, required: true, schema: { type: string } }]
+      responses: { "200": { description: ok } }

@@ -4,15 +4,30 @@
 > that helps shoppers stop overpaying, and gets more valuable in every city as more
 > people contribute price, deal, and receipt data.
 
-This repository currently holds the **scalable architecture plan** derived from the
-product brain dump. It is designed to be **pragmatic at MVP scale** (first 50 users +
-Atozy soft launch) while keeping **clean seams to scale to millions of shoppers across
-many metros** without a rewrite.
+This repository holds the **scalable architecture plan** derived from the product brain dump
+**and a runnable modular-monolith backend scaffold that implements it**. It is designed to be
+**pragmatic at MVP scale** (first 50 users + Atozy soft launch) while keeping **clean seams to
+scale to millions of shoppers across many metros** without a rewrite.
+
+## Run the scaffold
+
+A working backend with **zero runtime dependencies** (Node 22 native TypeScript + in-memory
+adapters) — the whole value loop executes today; the module seams swap to managed cloud later.
+
+```bash
+npm test          # 18 tests: geo/confidence/entitlements units + e2e value loop + referral
+npm run typecheck # tsc --noEmit  (run `npm install` first for the one devDep)
+npm start         # BFF on :3000, seeded with the Salt Lake City demo metro
+npm run smoke     # programmatic walk through the value loop
+```
+
+See [`docs/IMPLEMENTATION.md`](docs/IMPLEMENTATION.md) for the code → architecture map.
 
 ## Start here
 
 | Doc | What it covers |
 |---|---|
+| [`docs/IMPLEMENTATION.md`](docs/IMPLEMENTATION.md) | **The runnable scaffold** — how to run it and how every file maps to the architecture |
 | [`docs/proven-patterns.md`](docs/proven-patterns.md) | **How Netflix, Meta, Cloudflare, Uber, Waze & AWS solve SmartCart's exact problems** — each pattern mapped onto a workload, with citations. Start here for the "why." |
 | [`docs/proven-patterns-east.md`](docs/proven-patterns-east.md) | **How 阿里 / 美团 / 字节 / 微信 / DeepSeek do the same at lower cost** — co-location, elastic peak, layered OR optimizer, sharding, overload protection, AI-cost & truth-discovery. The cost-efficiency playbook, from Mandarin sources. |
 | [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md) | The full plan: workloads, principles, bounded contexts, data layer, mobile/offline, geo scaling, anti-scraping, security, tech stack, roadmap |
@@ -62,4 +77,10 @@ so anti-scraping lives on the read path and bulk data is a separate B2B product.
 
 ## Status
 
-Architecture/planning stage — no application code yet. The docs above are the deliverable.
+Architecture **plan + runnable backend scaffold**. The modular monolith implements the core
+value loop (anonymous onboarding, search, TAO price reads, idempotent crowdsourced ingestion +
+confidence scoring, price-drop alerts, gamification, token-gated explainable optimization, and
+referral activation) with 18 passing tests and a clean typecheck. Storage/cache/bus run on
+in-memory adapters today and swap to Postgres+PostGIS / Redis / Kafka via the documented seams
+(`db/migrations/`, `docker-compose.yml`). Next: persistence adapters, mobile client, and the
+service extractions in [`docs/scaling-playbook.md`](docs/scaling-playbook.md).
