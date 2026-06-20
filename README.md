@@ -19,6 +19,7 @@ many metros** without a rewrite.
 | [`docs/diagrams/system-context.md`](docs/diagrams/system-context.md) | C4 system + container diagrams and key request flows (Mermaid) |
 | [`docs/data-model.md`](docs/data-model.md) | Core schemas, Redis/OpenSearch/warehouse usage, domain event contract |
 | [`docs/scaling-playbook.md`](docs/scaling-playbook.md) | Per-component bottlenecks, in-place scaling, and extraction triggers |
+| [`docs/cloud-vs-self-managed.md`](docs/cloud-vs-self-managed.md) | Self-managed (DIY) architecture vs. AWS/Azure/GCP managed cloud — philosophy, service-equivalents map, payment & contracting (on-demand → spot → reserved → enterprise commitments → startup credits → egress/lock-in), the scale gap, and SmartCart's buy-vs-build call |
 | [`docs/roadmap.md`](docs/roadmap.md) | Phased build order mapped to the product's MVP rollout |
 
 ## Grounded in how hyperscalers actually do it
