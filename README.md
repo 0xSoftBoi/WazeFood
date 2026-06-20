@@ -14,6 +14,7 @@ many metros** without a rewrite.
 | Doc | What it covers |
 |---|---|
 | [`docs/proven-patterns.md`](docs/proven-patterns.md) | **How Netflix, Meta, Cloudflare, Uber, Waze & AWS solve SmartCart's exact problems** — each pattern mapped onto a workload, with citations. Start here for the "why." |
+| [`docs/proven-patterns-east.md`](docs/proven-patterns-east.md) | **How 阿里 / 美团 / 字节 / 微信 / DeepSeek do the same at lower cost** — co-location, elastic peak, layered OR optimizer, sharding, overload protection, AI-cost & truth-discovery. The cost-efficiency playbook, from Mandarin sources. |
 | [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md) | The full plan: workloads, principles, bounded contexts, data layer, mobile/offline, geo scaling, anti-scraping, security, tech stack, roadmap |
 | [`docs/diagrams/system-context.md`](docs/diagrams/system-context.md) | C4 system + container diagrams and key request flows (Mermaid) |
 | [`docs/data-model.md`](docs/data-model.md) | Core schemas, Redis/OpenSearch/warehouse usage, domain event contract |
@@ -34,6 +35,16 @@ planetary scale proved in public ([full evidence + citations](docs/proven-patter
 | Trust noisy crowd data without being gamed | **Waze** | Reputation-weighted confidence + cross-verification + Sybil defense |
 | Contain failure to one city; scale city-by-city | **AWS / DoorDash** | The **metro = a cell**; linear scale by adding cells |
 | Never lose/double-count an untrusted write | **Stripe / Kafka** | Idempotency keys + transactional outbox + idempotent consumers |
+
+…and the **cost-efficiency** layer, from the East ([full doc + Mandarin sources](docs/proven-patterns-east.md)):
+
+| SmartCart problem | Proven by (东) | Cost lever |
+|---|---|---|
+| Idle servers off-peak, heavy batch ML | **阿里 / 字节** 在离线混部 | Co-locate online + offline on one pool, tidal nightly batch → ~2× utilization |
+| Spiky weekend/holiday demand | **阿里** 双11 弹性 + 限流降级 | Rent peak then release; shed low-priority work ("有损服务" > outage) |
+| Real-time cart/route optimization | **美团** 运筹优化 | Layered cheap real-time tier over async OR+ML planning |
+| OCR/vision/LLM on receipts | **DeepSeek** MoE + MLA + FP8 | Cheap→expensive model routing, quantize, cache/batch → ~1/10 cost |
+| Trust conflicting crowd reports | **真值发现** Truth Discovery | Iterative source-reliability ⇄ value-confidence, no manual review |
 
 ## The one-paragraph version
 
