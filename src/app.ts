@@ -17,6 +17,7 @@ import { AlertsService } from "./modules/alerts/service.ts";
 import { OptimizationService } from "./modules/optimization/service.ts";
 import { ReferralService } from "./modules/referral/service.ts";
 import { ListsService } from "./modules/lists/service.ts";
+import { ARSceneService } from "./modules/arscene/service.ts";
 
 export type App = ReturnType<typeof buildApp>;
 
@@ -48,6 +49,29 @@ export function buildApp(config: Config = loadConfig(), clock: Clock = systemClo
     stores: { get: (id) => { const s = catalog.getStore(id); return s === undefined ? undefined : { lat: s.lat, lng: s.lng, metro: s.metro }; } },
     reputation: { reputation: (userId) => gamification.reputation(userId) },
     priorPrice: { getProjection: (p, s) => pricing.getProjection(p, s) },
+    locations: { setAisle: (storeId, productId, section) => catalog.setAisle(storeId, productId, section) },
+  });
+
+  // Meter adapter reused by optimization callers (free cart-optimize tokens).
+  const optimizeMeter = { consume: (userId: string, feature: "cart_optimize") => ({ ok: entitlements.consume(userId, feature).ok }) };
+
+  const arscene = new ARSceneService({
+    meter: optimizeMeter,
+    pricing: {
+      priceAtStore: (p, s) => pricing.getProjection(p, s)?.price,
+      bestNearbyPrice: (p, at, r) => pricing.bestNearbyPrice(p, at, r),
+    },
+    catalog: {
+      nearbyStores: (at, r) => catalog.nearbyStores(at, r).map((s) => ({ id: s.id, name: s.name, lat: s.lat, lng: s.lng, distanceMeters: s.distanceMeters })),
+      getStore: (id) => { const s = catalog.getStore(id); return s === undefined ? undefined : { name: s.name, lat: s.lat, lng: s.lng }; },
+      getProduct: (id) => { const p = catalog.getProduct(id); return p === undefined ? undefined : { canonicalName: p.name }; },
+      getAisle: (storeId, productId) => catalog.getAisle(storeId, productId),
+    },
+    deals: { dealsNear: (at, r) => alerts.dealsNear(at, r).map((d) => ({ storeId: d.storeId, productId: d.productId, kind: d.kind })) },
+    optimize: {
+      optimize: (i) => optimization.optimize(i),
+    },
+    lists: { getList: (id) => { const l = lists.getList(id); return l === undefined ? undefined : { items: l.items.map((it) => ({ productId: it.productId, qty: it.qty })) }; } },
   });
 
   const optimization = new OptimizationService({
@@ -88,5 +112,5 @@ export function buildApp(config: Config = loadConfig(), clock: Clock = systemClo
   bus.on("deal.reported", (e) => { alerts.onDealReported(e); });
   bus.on("contribution.received", (e) => { gamification.awardForContribution(e.userId, e.kind, metroOf(e.storeId)); });
 
-  return { config, clock, cache, bus, identity, catalog, pricing, ingestion, entitlements, gamification, alerts, optimization, referral, lists };
+  return { config, clock, cache, bus, identity, catalog, pricing, ingestion, entitlements, gamification, alerts, optimization, referral, lists, arscene };
 }

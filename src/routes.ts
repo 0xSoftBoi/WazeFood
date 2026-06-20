@@ -162,5 +162,63 @@ export function registerRoutes(router: Router, app: App): Router {
   });
   router.get("/referrals/:referrerId/progress", (ctx) => ok(app.referral.progress(ctx.params.referrerId!)));
 
+  // --- Local deals feed (also powers AR deal pins) ---
+  router.get("/deals/near", (ctx) => {
+    const lat = Number(ctx.query.get("lat"));
+    const lng = Number(ctx.query.get("lng"));
+    if (!Number.isFinite(lat) || !Number.isFinite(lng)) throw badRequest("lat, lng required");
+    const radius = Number(ctx.query.get("radius") ?? "16000");
+    return ok({ deals: app.alerts.dealsNear({ lat, lng }, radius) });
+  });
+
+  // --- AR & wearables ---
+  // Device capability matrix — clients call this to learn what their surface can render.
+  router.get("/ar/devices", () =>
+    ok({
+      tiers: {
+        phone_ar: "ARKit / ARCore + Geospatial — world + geo anchors, occlusion, route line",
+        web_ar: "WebXR / web AR — geo-anchored cards + route, no occlusion",
+        glasses_display: "Meta Ray-Ban Display / Snap Spectacles — a few HUD cards, capture",
+        glasses_audio: "Ray-Ban Meta (no display) — spoken cues + POV capture",
+      },
+    }),
+  );
+
+  // Build an AR scene tailored to the device tier.
+  router.post("/ar/scene", (ctx) => {
+    const b = asBody(ctx.body);
+    const itemsRaw = Array.isArray(b.items) ? b.items : undefined;
+    const items = itemsRaw?.map((i) => { const ib = asBody(i); return { productId: str(ib, "productId"), qty: typeof ib.qty === "number" ? ib.qty : 1 }; });
+    const scene = app.arscene.buildScene({
+      userId: str(b, "userId"),
+      at: { lat: num(b, "lat"), lng: num(b, "lng") },
+      deviceTier: (optStr(b, "deviceTier") as "phone_ar" | "web_ar" | "glasses_display" | "glasses_audio") ?? "phone_ar",
+      storeId: optStr(b, "storeId"),
+      listId: optStr(b, "listId"),
+      items,
+      mode: (optStr(b, "mode") as "chill" | "balanced" | "max") ?? "balanced",
+      radiusMeters: typeof b.radiusMeters === "number" ? b.radiusMeters : undefined,
+    });
+    return ok(scene);
+  });
+
+  // POV-glasses (or web) capture → the same idempotent ingestion pipeline, tagged by channel.
+  router.post("/ar/capture", async (ctx) => {
+    const b = asBody(ctx.body);
+    const contribution = await app.ingestion.submit({
+      idempotencyKey: str(b, "idempotencyKey"),
+      userId: str(b, "userId"),
+      storeId: str(b, "storeId"),
+      kind: str(b, "kind") as ContributionType,
+      productId: optStr(b, "productId") ?? null,
+      reportedPrice: typeof b.reportedPrice === "number" ? b.reportedPrice : null,
+      aisle: optStr(b, "aisle") ?? null,
+      via: (optStr(b, "via") as "glasses" | "web" | "app") ?? "glasses",
+      lat: num(b, "lat"),
+      lng: num(b, "lng"),
+    });
+    return ok(contribution, 201);
+  });
+
   return router;
 }

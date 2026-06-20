@@ -6,6 +6,7 @@ import { cellOf, kRing, ringForMeters, type LatLng } from "../../platform/geo/h3
 import { newId } from "../../platform/id.ts";
 import { err, ok, type Result } from "../../platform/result.ts";
 import { MemoryTable } from "../../platform/store/store.ts";
+import type { ContributionType } from "../../platform/events/events.ts";
 
 export type Watch = {
   id: string;
@@ -31,9 +32,20 @@ const FREE_WATCH_LIMIT = 3;
 
 export type EntitlementsPort = { isPremium: (userId: string) => boolean };
 
+export type Deal = {
+  id: string;
+  storeId: string;
+  productId: string | null;
+  kind: ContributionType;
+  cell: string;
+  createdAt: string;
+};
+
 export class AlertsService {
   private readonly watches = new MemoryTable<Watch>();
   private readonly notifications = new MemoryTable<Notification>();
+  // Local daily deals feed (PDF "Local Daily Deals"); also drives AR deal pins.
+  private readonly deals = new MemoryTable<Deal>();
 
   private readonly deps: { entitlements: EntitlementsPort; h3Resolution: number };
   constructor(deps: { entitlements: EntitlementsPort; h3Resolution: number }) {
@@ -102,7 +114,24 @@ export class AlertsService {
     return watchers.length;
   }
 
-  onDealReported(e: { storeId: string; productId: string | null; cell: string }): number {
+  // Stores within radius keyed by cell+kRing, for the local deal feed / AR deal pins.
+  dealsNear(at: LatLng, radiusMeters: number): Deal[] {
+    const origin = cellOf(at, this.deps.h3Resolution);
+    const ring = new Set(kRing(origin, ringForMeters(at, radiusMeters, this.deps.h3Resolution)));
+    return this.deals
+      .find((d) => ring.has(d.cell))
+      .sort((a, b) => b.createdAt.localeCompare(a.createdAt));
+  }
+
+  onDealReported(e: { storeId: string; productId: string | null; kind: ContributionType; cell: string }): number {
+    this.deals.insert({
+      id: newId("dl"),
+      storeId: e.storeId,
+      productId: e.productId,
+      kind: e.kind,
+      cell: e.cell,
+      createdAt: new Date().toISOString(),
+    });
     if (e.productId === null) return 0;
     const watchers = this.watches.find((w) => w.productId === e.productId && this.covers(w, e.cell));
     for (const w of watchers) {

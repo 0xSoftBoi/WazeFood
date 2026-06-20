@@ -42,6 +42,8 @@ export class CatalogService {
   private readonly products = new MemoryTable<Product>();
   private readonly stores = new MemoryTable<Store>();
   private readonly swaps = new MemoryTable<Swap>();
+  // Crowdsourced "where is this product in the store" (PDF: aisle/location reporting).
+  private readonly aisles = new MemoryTable<{ id: string; storeId: string; productId: string; section: string; updatedAt: string }>();
 
   private readonly deps: { bus: EventBus; h3Resolution: number };
   constructor(deps: { bus: EventBus; h3Resolution: number }) {
@@ -92,6 +94,15 @@ export class CatalogService {
     const product = this.products.insert({ ...input, id: newId("prd") });
     await this.deps.bus.publish({ type: "product.created", productId: product.id, source: "user" });
     return product;
+  }
+
+  // Aisle/section location for in-store AR product cards ("Milk — aisle 12").
+  setAisle(storeId: string, productId: string, section: string): void {
+    this.aisles.upsert({ id: `${storeId}|${productId}`, storeId, productId, section, updatedAt: new Date().toISOString() });
+  }
+
+  getAisle(storeId: string, productId: string): string | undefined {
+    return this.aisles.get(`${storeId}|${productId}`)?.section;
   }
 
   swapsFor(productId: string): Swap[] {

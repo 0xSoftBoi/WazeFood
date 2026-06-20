@@ -23,6 +23,7 @@ export type Contribution = {
   lng: number;
   cell: string;
   geofenceValid: boolean;
+  via: "app" | "glasses" | "web";
   confidence: number | null;
   status: "pending" | "scored" | "rejected" | "duplicate";
   createdAt: string;
@@ -35,9 +36,20 @@ export type SubmitInput = {
   kind: ContributionType;
   productId?: string | null;
   reportedPrice?: number | null;
+  aisle?: string | null; // for kind="aisle": where the product lives in the store
+  via?: "app" | "glasses" | "web"; // capture channel (POV glasses feed the same pipeline)
   lat: number;
   lng: number;
 };
+
+// Map a contribution type to a confidence source weight. In-store observations
+// (shelf/aisle/clearance/oos/coupon) are treated as shelf-grade evidence; receipts are
+// strongest; bare manual price edits are weakest.
+function sourceForKind(kind: ContributionType): "receipt" | "shelf" | "manual" {
+  if (kind === "receipt") return "receipt";
+  if (kind === "price") return "manual";
+  return "shelf";
+}
 
 // Ports: ingestion never reaches into other modules' storage.
 export type StorePort = { get: (id: string) => { lat: number; lng: number; metro: string } | undefined };
@@ -45,6 +57,7 @@ export type ReputationPort = { reputation: (userId: string) => number };
 export type PriorPricePort = {
   getProjection: (productId: string, storeId: string) => { price: number; confidence: number } | undefined;
 };
+export type LocationPort = { setAisle: (storeId: string, productId: string, section: string) => void };
 
 const GEOFENCE_RADIUS_M = 200; // "was the user actually at the store?"
 
@@ -56,6 +69,7 @@ export class IngestionService {
     stores: StorePort;
     reputation: ReputationPort;
     priorPrice: PriorPricePort;
+    locations: LocationPort;
     h3Resolution: number;
   };
   constructor(deps: {
@@ -63,6 +77,7 @@ export class IngestionService {
     stores: StorePort;
     reputation: ReputationPort;
     priorPrice: PriorPricePort;
+    locations: LocationPort;
     h3Resolution: number;
   }) {
     this.deps = deps;
@@ -101,6 +116,7 @@ export class IngestionService {
       lng: input.lng,
       cell,
       geofenceValid,
+      via: input.via ?? "app",
       confidence: null,
       status: "pending",
       createdAt: new Date().toISOString(),
@@ -123,7 +139,7 @@ export class IngestionService {
         : undefined;
 
     const { confidence, accepted } = scoreConfidence({
-      source: contribution.kind === "receipt" ? "receipt" : contribution.kind === "shelf" ? "shelf" : "manual",
+      source: sourceForKind(contribution.kind),
       geofenceValid,
       reporterReputation: this.deps.reputation.reputation(contribution.userId),
       reportedPrice: contribution.reportedPrice,
@@ -152,7 +168,7 @@ export class IngestionService {
         price: scored.reportedPrice,
         confidence,
         asOf: scored.createdAt,
-        source: scored.kind === "receipt" ? "receipt" : scored.kind === "shelf" ? "shelf" : "manual",
+        source: sourceForKind(scored.kind),
         cell,
       });
     }
@@ -164,6 +180,10 @@ export class IngestionService {
         kind: scored.kind,
         cell,
       });
+    }
+    // Accepted aisle reports update the in-store product location used by AR cards.
+    if (accepted && scored.kind === "aisle" && scored.productId !== null && input.aisle != null) {
+      this.deps.locations.setAisle(scored.storeId, scored.productId, input.aisle);
     }
 
     return scored;

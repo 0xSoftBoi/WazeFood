@@ -52,6 +52,15 @@ export async function seedDemo(app: App): Promise<SeedRefs> {
   await price("prd_cereal", walmart.id, 4.5);
   await price("prd_bread", smiths.id, 2.99);
 
+  // Crowdsourced aisle locations (for in-store AR product cards).
+  app.catalog.setAisle(smiths.id, "prd_eggs", "Aisle 4 · Dairy");
+  app.catalog.setAisle(smiths.id, "prd_milk", "Aisle 4 · Dairy");
+  app.catalog.setAisle(smiths.id, "prd_bread", "Bakery");
+  app.catalog.setAisle(smiths.id, "prd_cereal", "Aisle 7 · Cereal");
+
+  // A reported clearance deal (drives the local deals feed + AR deal pins).
+  await app.bus.publish({ type: "deal.reported", storeId: walmart.id, productId: "prd_eggs", kind: "clearance", cell: cell(walmart.id) });
+
   return {
     metro,
     at: { lat: 40.7608, lng: -111.891 },
