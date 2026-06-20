@@ -63,6 +63,17 @@ planetary scale proved in public ([full evidence + citations](docs/proven-patter
 | OCR/vision/LLM on receipts | **DeepSeek** MoE + MLA + FP8 | Cheap→expensive model routing, quantize, cache/batch → ~1/10 cost |
 | Trust conflicting crowd reports | **真值发现** Truth Discovery | Iterative source-reliability ⇄ value-confidence, no manual review |
 
+## Domain & business research
+
+Deep, independently-cited research memos that de-risk the product beyond the architecture:
+
+| Memo | The sharpest finding |
+|---|---|
+| [`docs/research/price-data-and-competition.md`](docs/research/price-data-and-competition.md) | Nobody runs on one data source; cold-start across 4 metros is the top risk (≈40k SKUs/store, weekly decay) — seed via circulars + polite public scrape + a few paid power-users before crowd takes over. Use the Instacart surveillance-pricing story as the launch narrative. |
+| [`docs/research/receipt-ocr-product-matching.md`](docs/research/receipt-ocr-product-matching.md) | **Buy OCR cheap, build matching.** A hosted VLM does OCR+extraction ~25–400× cheaper than Textract/Veryfi; the durable problem is cross-retailer entity resolution. Barcode-first makes ~70% of ingestion cost $0; cheap→expensive routing turns ~$1,000/mo into ~$30/mo. |
+| [`docs/research/realtime-geospatial.md`](docs/research/realtime-geospatial.md) | H3 res 8 is the universal cell; the scaffold's per-`product:store` cache key is already correct (cells hold many stores). Treat the broker as at-least-once + outbox/CDC; TimescaleDB for history at MVP, Redpanda later. |
+| [`docs/research/market-and-unit-economics.md`](docs/research/market-and-unit-economics.md) | A credible low-single-digit-millions-ARR niche, **not** a venture rocket. Economics only work on near-zero (Atozy/referral) CAC; k-factor ~0.4–0.7; this niche has a graveyard (Basket pulled Feb 2026). Validate 2nd-list ≥50%, savings/list ≥10%, k≥0.4 before metro #2. |
+
 ## The one-paragraph version
 
 Start as a **modular monolith** with one module per bounded context (catalog, pricing,
