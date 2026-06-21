@@ -6,7 +6,7 @@ architecture → a **runnable, tested, persistent backend** with an AR/glasses l
 ## Run everything
 
 ```bash
-npm test            # 34 unit tests (in-memory, zero external deps) + 1 integration test (skipped)
+npm test            # 44 unit tests + 1 integration test (skipped offline); run `npm install` first
 npm run typecheck   # tsc --noEmit, clean
 npm start           # API + web demo on :3000  (open http://localhost:3000/)
 npm run smoke       # programmatic walk of the value loop
@@ -37,7 +37,7 @@ IT_DURABLE=1 npm run test:it
 
 - **A real Kafka/Pub-Sub producer Sink** (the Relay, Sink interface, at-least-once delivery, retry, and an HTTP-webhook sink are built — swap the sink impl; the loop is unchanged).
 - **True multi-node Redis** (async distributed reads) — today's cache is single-node durable (mirror + write-behind).
-- **Dedicated relational repositories** per `db/migrations/0001_init.sql` (the JSONB doc store backs all tables today); real **H3** (`h3-js`), pgvector embeddings for matching, TimescaleDB for history.
+- **Dedicated relational repositories** per `db/migrations/0001_init.sql` (the JSONB doc store backs all tables today); pgvector embeddings for matching, TimescaleDB for history. (Real **H3** via `h3-js` is now done.)
 - **Service extraction** (Ingestion → Optimization → Alerts → Pricing) — only when load triggers fire.
 - **Edge bot-management** (Cloudflare/Fastly JA4/WAF/DDoS) + **mobile attestation** (Play Integrity, App Attest, Private Access Tokens) — *buy/adopt at deployment*; the domain-specific scoring layer is already built (`docs/research/anti-scraping.md`).
 - **Auth hardening** (OIDC/JWT vs the demo `Bearer user:<id>`), SMS provider.
@@ -47,5 +47,5 @@ IT_DURABLE=1 npm run test:it
 ## Health snapshot
 
 - 34 unit tests passing, 1 integration test (gated, passing against live PG+Redis), typecheck clean.
-- Zero runtime dependencies on the default path; `pg`/`redis` are dynamically imported only in durable mode.
+- Minimal dependencies: `h3-js` for geo; `pg`/`redis` are dynamically imported only in durable mode.
 - Everything in this repo is committed to `claude/scalable-architecture-plan-9276yg`.

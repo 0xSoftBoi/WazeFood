@@ -11,11 +11,11 @@ scale to millions of shoppers across many metros** without a rewrite.
 
 ## Run the scaffold
 
-A working backend with **zero runtime dependencies** (Node 22 native TypeScript + in-memory
-adapters) — the whole value loop executes today; the module seams swap to managed cloud later.
+A working backend with **minimal dependencies** (Node 22 native TypeScript + in-memory
+adapters; `h3-js` for geo) — the whole value loop executes today; the module seams swap to managed cloud later.
 
 ```bash
-npm test          # 34 unit tests (zero external deps) + 1 gated integration test
+npm test          # 44 unit tests + 1 gated integration test (run `npm install` first)
 npm run typecheck # tsc --noEmit  (run `npm install` first for dev deps)
 npm start         # API + web AR demo on :3000  → open http://localhost:3000/
 npm run smoke     # programmatic walk through the value loop

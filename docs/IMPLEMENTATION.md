@@ -1,7 +1,7 @@
 # SmartCart — Implementation (the runnable scaffold)
 
 A working **modular-monolith backend** that embodies the architecture. It runs and tests with
-**zero runtime dependencies** (Node 22's native TypeScript + in-memory adapters), so the whole
+**minimal dependencies** (Node 22's native TypeScript + in-memory adapters; `h3-js` for geo), so the whole
 value loop is executable today; the same module seams swap to managed cloud infra later.
 
 ## Run it
@@ -101,7 +101,7 @@ into a fresh process from Postgres + Redis — `test/persistence.it.test.ts`.
 
 | Scaffold | Production |
 |---|---|
-| `platform/geo/h3.ts` | `h3-js` (true hexagons) — reimplement one file |
+| `platform/geo/h3.ts` | ✅ now real `h3-js` (true hexagons) — the one-file swap, done |
 | `MemoryTable` default | `STORE_DRIVER=postgres` → JSONB `doc_rows`; dedicated relational repos per `db/migrations/0001_init.sql` later |
 | `MemoryCache` default | `CACHE_DRIVER=redis` → `RedisCache` (mirror+write-behind today; async distributed next) |
 | in-process `EventBus` | Kafka / Pub-Sub, with the transactional `outbox` table |
