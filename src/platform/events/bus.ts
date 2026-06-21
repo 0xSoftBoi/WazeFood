@@ -13,6 +13,7 @@ export type HandlerError = { event: DomainEvent; error: unknown };
 export class EventBus {
   private readonly handlers = new Map<EventType, AnyHandler[]>();
   private readonly onError: (e: HandlerError) => void;
+  private recorder: ((event: DomainEvent) => void) | undefined;
 
   constructor(onError: (e: HandlerError) => void = () => {}) {
     this.onError = onError;
@@ -24,9 +25,20 @@ export class EventBus {
     this.handlers.set(type, list);
   }
 
+  // Records every published event (the outbox / durable event log). Set once at wiring time.
+  onPublish(recorder: (event: DomainEvent) => void): void {
+    this.recorder = recorder;
+  }
+
   // Publish and await all handlers. Sequential for deterministic tests; isolation means a
-  // thrown handler is captured (and reported) rather than rejecting the publish.
+  // thrown handler is captured (and reported) rather than rejecting the publish. Every event is
+  // first appended to the outbox so it survives restart and a future relay can replay it.
   async publish(event: DomainEvent): Promise<void> {
+    try {
+      this.recorder?.(event);
+    } catch (error) {
+      this.onError({ event, error });
+    }
     const list = this.handlers.get(event.type) ?? [];
     for (const handler of list) {
       try {

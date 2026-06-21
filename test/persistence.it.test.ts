@@ -67,6 +67,10 @@ test("data written by one instance is durable and hydrates into a fresh instance
     // Cache (Redis) durability — the leaderboard sorted set survived the restart:
     const lb = d2.app.gamification.leaderboard("weekly", seed.metro);
     assert.ok(lb.some((e) => e.userId === user.id && e.score >= 120), "leaderboard hydrated from Redis");
+
+    // Event log (outbox) durability — the full event history persisted to Postgres:
+    assert.ok(d2.app.outbox.count() > 0, "outbox event log hydrated from Postgres");
+    assert.ok((d2.app.outbox.countByType()["price.updated"] ?? 0) > 0, "price.updated events persisted");
   } finally {
     await d2.close();
   }

@@ -21,6 +21,7 @@ import { ListsService } from "./modules/lists/service.ts";
 import { ARSceneService } from "./modules/arscene/service.ts";
 import { MatchingService } from "./modules/matching/service.ts";
 import { RoutingPerception } from "./modules/ingestion/perception.ts";
+import { OutboxService } from "./modules/outbox/service.ts";
 
 export type App = ReturnType<typeof buildApp>;
 
@@ -37,6 +38,10 @@ export function buildApp(config: Config = loadConfig(), clock: Clock = systemClo
   const h3Resolution = config.h3Resolution;
 
   // --- Services (no cross-module wiring yet) ---
+  // Outbox records every published event (durable event log); wired to the bus below.
+  const outbox = new OutboxService({ tables });
+  bus.onPublish((event) => outbox.record(event));
+
   const identity = new IdentityService({ tables });
   const catalog = new CatalogService({ bus, h3Resolution, tables });
   const gamification = new GamificationService({ cache, clock, tables });
@@ -135,5 +140,5 @@ export function buildApp(config: Config = loadConfig(), clock: Clock = systemClo
   bus.on("deal.reported", (e) => { alerts.onDealReported(e); });
   bus.on("contribution.received", (e) => { gamification.awardForContribution(e.userId, e.kind, metroOf(e.storeId)); });
 
-  return { config, clock, cache, bus, identity, catalog, pricing, ingestion, entitlements, gamification, alerts, optimization, referral, lists, arscene, matching, perception };
+  return { config, clock, cache, bus, outbox, identity, catalog, pricing, ingestion, entitlements, gamification, alerts, optimization, referral, lists, arscene, matching, perception };
 }

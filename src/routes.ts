@@ -31,6 +31,29 @@ const ok = (body: unknown, status = 200): Reply => ({ status, body });
 export function registerRoutes(router: Router, app: App): Router {
   router.get("/health", () => ok({ status: "ok", service: "smartcart" }));
 
+  // Readiness: drivers configured + demo data present.
+  router.get("/ready", () =>
+    ok({
+      ready: app.catalog.listProducts().length > 0,
+      drivers: { store: app.config.storeDriver, cache: app.config.cacheDriver },
+    }),
+  );
+
+  // Basic operational metrics: catalog size, event-log totals, and the perception cost receipt.
+  router.get("/metrics", () =>
+    ok({
+      products: app.catalog.listProducts().length,
+      events: { total: app.outbox.count(), byType: app.outbox.countByType(), unpublished: app.outbox.unpublishedCount() },
+      perception: app.perception.stats(),
+    }),
+  );
+
+  // Durable event log (the outbox a future CDC relay would publish from).
+  router.get("/admin/outbox", (ctx) => {
+    const limit = Number(ctx.query.get("limit") ?? "50");
+    return ok({ count: app.outbox.count(), recent: app.outbox.recent(Number.isFinite(limit) ? limit : 50) });
+  });
+
   // --- Identity ---
   router.post("/users", (ctx) => {
     const b = asBody(ctx.body);
