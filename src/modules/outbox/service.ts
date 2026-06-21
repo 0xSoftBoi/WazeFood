@@ -33,18 +33,33 @@ export class OutboxService {
       this.lastSeq = this.outbox.all().reduce((m, r) => Math.max(m, r.seq), 0);
     }
     const seq = ++this.lastSeq;
+    // In-process handlers ran synchronously at publish time; publishedAt stays null until a
+    // Relay delivers the event to the EXTERNAL sink (the transactional-outbox pattern).
     return this.outbox.insert({
       id: newId("evt"),
       seq,
       type: event.type,
       payload: event,
       createdAt: now.toISOString(),
-      publishedAt: now.toISOString(),
+      publishedAt: null,
     });
   }
 
   recent(limit = 50): OutboxRecord[] {
     return this.outbox.all().sort((a, b) => b.seq - a.seq).slice(0, limit);
+  }
+
+  // Oldest-first batch of events not yet delivered to the external sink (for the Relay).
+  unpublished(limit = 100): OutboxRecord[] {
+    return this.outbox
+      .find((r) => r.publishedAt === null)
+      .sort((a, b) => a.seq - b.seq)
+      .slice(0, limit);
+  }
+
+  markPublished(ids: string[]): void {
+    const at = new Date().toISOString();
+    for (const id of ids) this.outbox.update(id, { publishedAt: at });
   }
 
   count(): number {

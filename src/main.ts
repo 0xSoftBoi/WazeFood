@@ -8,6 +8,7 @@ import { Router } from "./platform/http/router.ts";
 import { identity, rateLimit } from "./platform/http/middleware.ts";
 import { registerRoutes } from "./routes.ts";
 import { seedDemo } from "./seed.ts";
+import { Relay, consoleSink, httpSink } from "./modules/outbox/relay.ts";
 
 async function main(): Promise<void> {
   const config = loadConfig();
@@ -29,12 +30,18 @@ async function main(): Promise<void> {
   const flushTimer = setInterval(() => { void durable.flush().catch((e) => console.error("flush error:", e)); }, 2000);
   flushTimer.unref();
 
+  // Outbox relay: fan the durable event log out to an external sink (webhook if configured).
+  const sink = config.outboxWebhookUrl !== null ? httpSink(config.outboxWebhookUrl) : consoleSink;
+  const relay = new Relay({ outbox: app.outbox, sink });
+  relay.start(1000);
+
   const server = router.listen(config.port, () => {
-    console.log(`SmartCart listening on :${config.port} (store=${durable.drivers.store}, cache=${durable.drivers.cache})`);
+    console.log(`SmartCart listening on :${config.port} (store=${durable.drivers.store}, cache=${durable.drivers.cache}, relay=${sink.name})`);
   });
 
   const shutdown = async () => {
     clearInterval(flushTimer);
+    relay.stop();
     server.close();
     await durable.close();
     process.exit(0);

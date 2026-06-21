@@ -33,5 +33,6 @@ test("a contribution produces an ordered, typed event log", async () => {
   for (let i = 1; i < recent.length; i++) {
     assert.ok(recent[i - 1]!.seq > recent[i]!.seq, "recent() is ordered by descending seq");
   }
-  assert.equal(app.outbox.unpublishedCount(), 0);
+  // Nothing has been relayed to an external sink yet → all events are unpublished.
+  assert.equal(app.outbox.unpublishedCount(), app.outbox.count());
 });

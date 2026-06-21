@@ -27,14 +27,14 @@ IT_DURABLE=1 npm run test:it
 | **Ingestion moat** | Barcode-first entity resolution, cheap→expensive perception routing (cost-accounted), media-hash dedup, match/extraction confidence factors |
 | **AR & glasses** | `/ar/scene` world-anchored overlays (price/aisle cards, deal pins, route line) tailored per tier (phone/web/Meta/Snap), POV-glasses capture into ingestion |
 | **Persistence** | Postgres (write-behind + hydrate, JSONB doc store) + Redis cache (mirror + write-behind), restart-durability integration-tested against live servers |
-| **Event log** | Durable outbox records every domain event (the bus → Kafka/CDC seam), survives restart |
+| **Event log + relay** | Durable outbox records every domain event; a Relay drains it to a pluggable Sink (console/HTTP-webhook) with at-least-once delivery + retry — the bus → Kafka/CDC seam |
 | **Ops** | `/health`, `/ready`, `/metrics` (event + perception-cost stats), `/admin/outbox` |
 | **Delivery** | Dockerfile, CI (unit + smoke + live-DB integration job), web demo, OpenAPI spec, SQL migration |
 | **Research** | 4 cited memos: price-data sourcing & competition, receipt OCR & matching, real-time/geospatial, market & unit economics |
 
 ## Deferred (by design — earn the right via the scaling-playbook triggers) ⏳
 
-- **Real Kafka/Pub-Sub + CDC relay** off the outbox (the in-process bus is the seam; outbox is the log).
+- **A real Kafka/Pub-Sub producer Sink** (the Relay, Sink interface, at-least-once delivery, retry, and an HTTP-webhook sink are built — swap the sink impl; the loop is unchanged).
 - **True multi-node Redis** (async distributed reads) — today's cache is single-node durable (mirror + write-behind).
 - **Dedicated relational repositories** per `db/migrations/0001_init.sql` (the JSONB doc store backs all tables today); real **H3** (`h3-js`), pgvector embeddings for matching, TimescaleDB for history.
 - **Service extraction** (Ingestion → Optimization → Alerts → Pricing) — only when load triggers fire.

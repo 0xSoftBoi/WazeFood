@@ -13,6 +13,7 @@ export type Config = {
   redisUrl: string;
   rateLimitPerMin: number;
   h3Resolution: number;
+  outboxWebhookUrl: string | null;
 };
 
 function int(value: string | undefined, fallback: number): number {
@@ -30,5 +31,6 @@ export function loadConfig(env: NodeJS.ProcessEnv = process.env): Config {
     redisUrl: env.REDIS_URL ?? "redis://localhost:6379",
     rateLimitPerMin: int(env.RATELIMIT_PER_MIN, 120),
     h3Resolution: int(env.H3_RESOLUTION, 8),
+    outboxWebhookUrl: env.OUTBOX_WEBHOOK_URL ?? null,
   };
 }
