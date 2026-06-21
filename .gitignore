@@ -7,3 +7,6 @@ coverage/
 .idea/
 .vscode/
 tmp/
+
+# Redis snapshot (created when running redis locally)
+dump.rdb
