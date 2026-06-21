@@ -15,18 +15,21 @@ A working backend with **zero runtime dependencies** (Node 22 native TypeScript 
 adapters) — the whole value loop executes today; the module seams swap to managed cloud later.
 
 ```bash
-npm test          # 18 tests: geo/confidence/entitlements units + e2e value loop + referral
-npm run typecheck # tsc --noEmit  (run `npm install` first for the one devDep)
-npm start         # BFF on :3000, seeded with the Salt Lake City demo metro
+npm test          # 34 unit tests (zero external deps) + 1 gated integration test
+npm run typecheck # tsc --noEmit  (run `npm install` first for dev deps)
+npm start         # API + web AR demo on :3000  → open http://localhost:3000/
 npm run smoke     # programmatic walk through the value loop
+npm run test:it   # IT_DURABLE=1 + live Postgres/Redis → proves restart durability
 ```
 
-See [`docs/IMPLEMENTATION.md`](docs/IMPLEMENTATION.md) for the code → architecture map.
+See [`docs/STATUS.md`](docs/STATUS.md) for what's done vs deferred and
+[`docs/IMPLEMENTATION.md`](docs/IMPLEMENTATION.md) for the code → architecture map.
 
 ## Start here
 
 | Doc | What it covers |
 |---|---|
+| [`docs/STATUS.md`](docs/STATUS.md) | **Build status** — what's done vs deferred, and how to run everything (incl. durable mode) |
 | [`docs/IMPLEMENTATION.md`](docs/IMPLEMENTATION.md) | **The runnable scaffold** — how to run it and how every file maps to the architecture |
 | [`docs/proven-patterns.md`](docs/proven-patterns.md) | **How Netflix, Meta, Cloudflare, Uber, Waze & AWS solve SmartCart's exact problems** — each pattern mapped onto a workload, with citations. Start here for the "why." |
 | [`docs/proven-patterns-east.md`](docs/proven-patterns-east.md) | **How 阿里 / 美团 / 字节 / 微信 / DeepSeek do the same at lower cost** — co-location, elastic peak, layered OR optimizer, sharding, overload protection, AI-cost & truth-discovery. The cost-efficiency playbook, from Mandarin sources. |
