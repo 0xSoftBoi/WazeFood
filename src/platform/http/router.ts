@@ -137,8 +137,12 @@ export class Router {
           headers: req.headers,
           body,
         });
-        res.writeHead(reply.status, { "content-type": "application/json", ...(reply.headers ?? {}) });
-        res.end(reply.body === undefined ? "" : JSON.stringify(reply.body));
+        // String bodies are sent raw (HTML/text); everything else is JSON.
+        const isRaw = typeof reply.body === "string";
+        const contentType = reply.headers?.["content-type"] ?? (isRaw ? "text/plain; charset=utf-8" : "application/json");
+        res.writeHead(reply.status, { ...(reply.headers ?? {}), "content-type": contentType });
+        if (reply.body === undefined) res.end("");
+        else res.end(isRaw ? (reply.body as string) : JSON.stringify(reply.body));
       });
     });
     server.listen(port, onReady);

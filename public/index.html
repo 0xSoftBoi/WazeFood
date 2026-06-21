@@ -1,0 +1,140 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>SmartCart — AR demo</title>
+<style>
+  :root { color-scheme: dark; }
+  * { box-sizing: border-box; }
+  body { margin: 0; font: 15px/1.4 -apple-system, system-ui, sans-serif; background: #0b1020; color: #e8ecf5; }
+  header { padding: 14px 18px; border-bottom: 1px solid #1d2740; display: flex; align-items: baseline; gap: 10px; }
+  header b { font-size: 18px; letter-spacing: .5px; }
+  header span { color: #8aa0c8; font-size: 13px; }
+  main { display: grid; grid-template-columns: 1fr 360px; gap: 0; height: calc(100vh - 52px); }
+  @media (max-width: 800px){ main { grid-template-columns: 1fr; height:auto; } }
+  #stage { position: relative; background: radial-gradient(1200px 600px at 30% -10%, #16203c, #0b1020); }
+  canvas { width: 100%; height: 100%; display: block; }
+  aside { border-left: 1px solid #1d2740; padding: 16px; overflow:auto; }
+  .controls { display:flex; gap:8px; flex-wrap:wrap; margin-bottom:12px; }
+  button { background:#1b2b52; color:#e8ecf5; border:1px solid #2c3f6b; padding:8px 12px; border-radius:8px; cursor:pointer; }
+  button.active { background:#2563eb; border-color:#2563eb; }
+  .card { background:#121a30; border:1px solid #223153; border-radius:12px; padding:12px; margin-bottom:10px; }
+  .card h4 { margin:0 0 4px; font-size:14px; }
+  .muted { color:#8aa0c8; font-size:13px; }
+  .save { color:#5fd08a; font-weight:600; }
+  .warn { color:#ffb454; }
+  .pill { display:inline-block; background:#0e1730; border:1px solid #223153; border-radius:999px; padding:2px 8px; font-size:12px; color:#9fb3d8; }
+  .total { font-size:22px; font-weight:700; }
+</style>
+</head>
+<body>
+<header><b>SmartCart</b><span>“Waze for grocery prices” — live AR scene demo</span></header>
+<main>
+  <div id="stage"><canvas id="map"></canvas></div>
+  <aside>
+    <div class="controls">
+      <button id="m-outdoor" class="active">Outdoor route</button>
+      <button id="m-instore">In-store @ Smith's</button>
+    </div>
+    <div id="summary"></div>
+    <div id="list"></div>
+  </aside>
+</main>
+<script>
+const API = location.origin;
+let userId = null;
+const at = { lat: 40.7608, lng: -111.891 }; // standing at Smith's (SLC seed)
+const cart = [
+  { productId: "prd_eggs", qty: 1 },
+  { productId: "prd_milk", qty: 1 },
+  { productId: "prd_cereal", qty: 1 },
+];
+
+async function jget(p){ const r = await fetch(API+p); return r.json(); }
+async function jpost(p, body){ const r = await fetch(API+p, { method:"POST", headers:{ "content-type":"application/json", "x-device-id":"web-demo" }, body: JSON.stringify(body) }); return r.json(); }
+
+async function ensureUser(){ if(!userId){ const u = await jpost("/users", { metro:"slc" }); userId = u.id; } return userId; }
+
+function project(points, w, h){
+  const lats = points.map(p=>p.lat), lngs = points.map(p=>p.lng);
+  let minLa=Math.min(...lats), maxLa=Math.max(...lats), minLng=Math.min(...lngs), maxLng=Math.max(...lngs);
+  const pad=0.004; minLa-=pad; maxLa+=pad; minLng-=pad; maxLng+=pad;
+  return p => ({
+    x: ( (p.lng-minLng)/(maxLng-minLng||1) ) * (w-60) + 30,
+    y: ( 1-(p.lat-minLa)/(maxLa-minLa||1) ) * (h-60) + 30,
+  });
+}
+
+function draw(scene){
+  const cv = document.getElementById("map");
+  const w = cv.clientWidth, h = cv.clientHeight; cv.width=w; cv.height=h;
+  const ctx = cv.getContext("2d");
+  ctx.clearRect(0,0,w,h);
+  const pts = [at, ...scene.anchors.filter(a=>a.geo).map(a=>a.geo)];
+  const proj = project(pts, w, h);
+
+  // route line (the green "Waze" path)
+  if(scene.route && scene.route.polyline.length>1){
+    ctx.strokeStyle="#33e08a"; ctx.lineWidth=4; ctx.lineJoin="round"; ctx.beginPath();
+    scene.route.polyline.forEach((p,i)=>{ const q=proj(p); i?ctx.lineTo(q.x,q.y):ctx.moveTo(q.x,q.y); });
+    ctx.stroke();
+  }
+  // you
+  const me = proj(at);
+  ctx.fillStyle="#2563eb"; ctx.beginPath(); ctx.arc(me.x,me.y,7,0,7); ctx.fill();
+  ctx.fillStyle="#bcd0f5"; ctx.font="12px system-ui"; ctx.fillText("you", me.x+10, me.y+4);
+
+  // anchors
+  for(const a of scene.anchors){
+    if(!a.geo) continue; const q = proj(a.geo);
+    const color = a.kind==="deal_pin" ? "#ffb454" : a.kind==="route_waypoint" ? "#33e08a" : "#7aa2ff";
+    ctx.fillStyle=color; ctx.beginPath(); ctx.arc(q.x,q.y,6,0,7); ctx.fill();
+    const label = a.kind==="store_pin" ? a.name : a.kind==="deal_pin" ? "deal" : a.kind==="route_waypoint" ? ("stop "+a.order) : "";
+    ctx.fillStyle="#cdd9f2"; ctx.fillText(label, q.x+9, q.y+4);
+  }
+}
+
+function renderOutdoor(scene){
+  const s = document.getElementById("summary");
+  s.innerHTML = scene.route
+    ? `<div class="card"><div class="muted">Optimized multi-store plan</div><div class="total save">Save $${scene.route.estimatedSavings.toFixed(2)}</div><div class="muted">mode: ${scene.route.mode} · ${scene.route.polyline.length-1} stops</div></div>`
+    : `<div class="card muted">No route (free optimization tokens used up — the paywall hook).</div>`;
+  const list = document.getElementById("list");
+  list.innerHTML = scene.anchors.map(a=>{
+    if(a.kind==="store_pin") return `<div class="card"><h4>${a.name}</h4><div class="muted">${Math.round(a.distanceMeters)} m away</div></div>`;
+    if(a.kind==="deal_pin") return `<div class="card"><h4 class="warn">Deal nearby</h4><div class="muted">${a.label}</div></div>`;
+    if(a.kind==="route_waypoint") return `<div class="card"><h4>Stop ${a.order}: ${a.name}</h4><span class="pill">route</span></div>`;
+    return "";
+  }).join("");
+}
+
+function renderInstore(scene){
+  document.getElementById("summary").innerHTML = `<div class="card muted">In-store AR · ${scene.anchors.length} item cards · ${scene.approxPayloadBytes} bytes</div>`;
+  document.getElementById("list").innerHTML = scene.anchors.map(a=>{
+    if(a.kind!=="price_card") return "";
+    const badge = a.cheaperElsewhere
+      ? `<div class="warn">Cheaper elsewhere — save $${a.cheaperElsewhere.savings.toFixed(2)}</div>`
+      : `<div class="save">Best price here</div>`;
+    return `<div class="card"><h4>${a.name}</h4><div class="muted">${a.aisle ?? "aisle unknown"} · ${a.price!=null?("$"+a.price.toFixed(2)):"—"}</div>${badge}</div>`;
+  }).join("");
+}
+
+async function show(mode){
+  await ensureUser();
+  document.getElementById("m-outdoor").classList.toggle("active", mode==="outdoor");
+  document.getElementById("m-instore").classList.toggle("active", mode==="instore");
+  const body = { userId, lat:at.lat, lng:at.lng, deviceTier:"phone_ar", items:cart, mode:"balanced" };
+  if(mode==="instore") body.storeId = "str_smiths";
+  const scene = await jpost("/ar/scene", body);
+  draw(scene);
+  mode==="instore" ? renderInstore(scene) : renderOutdoor(scene);
+}
+
+document.getElementById("m-outdoor").onclick = ()=>show("outdoor");
+document.getElementById("m-instore").onclick = ()=>show("instore");
+window.addEventListener("resize", ()=>show(document.getElementById("m-instore").classList.contains("active")?"instore":"outdoor"));
+show("outdoor");
+</script>
+</body>
+</html>

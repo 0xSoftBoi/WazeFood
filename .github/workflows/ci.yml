@@ -14,11 +14,45 @@ jobs:
         with:
           node-version: "22"
           cache: "npm"
-      - name: Install dev dependencies (typecheck only; runtime has none)
+      - name: Install dependencies
         run: npm install --no-audit --no-fund
       - name: Typecheck
         run: npm run typecheck
-      - name: Test
+      - name: Test (in-memory)
         run: npm test
       - name: Smoke
         run: npm run smoke
+
+  integration:
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_USER: smartcart
+          POSTGRES_PASSWORD: smartcart
+          POSTGRES_DB: smartcart
+        ports: ["5432:5432"]
+        options: >-
+          --health-cmd "pg_isready -U smartcart"
+          --health-interval 5s --health-timeout 3s --health-retries 10
+      redis:
+        image: redis:7
+        ports: ["6379:6379"]
+        options: >-
+          --health-cmd "redis-cli ping"
+          --health-interval 5s --health-timeout 3s --health-retries 10
+    env:
+      IT_DURABLE: "1"
+      DATABASE_URL: postgres://smartcart:smartcart@localhost:5432/smartcart
+      REDIS_URL: redis://localhost:6379
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: "npm"
+      - name: Install dependencies
+        run: npm install --no-audit --no-fund
+      - name: Integration test (durability vs live Postgres + Redis)
+        run: npm run test:it

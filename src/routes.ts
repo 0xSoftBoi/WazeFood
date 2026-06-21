@@ -2,12 +2,26 @@
 // fronts these with a managed gateway/CDN, but the shape (and the anti-scrape + identity
 // middleware in main.ts) is the same.
 
+import { readFileSync } from "node:fs";
 import type { App } from "./app.ts";
 import { badRequest, notFound } from "./platform/errors.ts";
 import { isOk } from "./platform/result.ts";
 import type { Reply, Router } from "./platform/http/router.ts";
 import type { RoutingMode } from "./modules/identity/service.ts";
 import type { ContributionType } from "./platform/events/events.ts";
+
+// The web demo page (served at "/"), read once at startup.
+let demoHtml: string | null = null;
+function loadDemo(): string {
+  if (demoHtml === null) {
+    try {
+      demoHtml = readFileSync(new URL("../public/index.html", import.meta.url), "utf8");
+    } catch {
+      demoHtml = "<!doctype html><title>SmartCart</title><p>Demo page not found.</p>";
+    }
+  }
+  return demoHtml;
+}
 
 type Body = Record<string, unknown>;
 const asBody = (b: unknown): Body => (b !== null && typeof b === "object" ? (b as Body) : {});
@@ -29,6 +43,9 @@ function optStr(b: Body, k: string): string | undefined {
 const ok = (body: unknown, status = 200): Reply => ({ status, body });
 
 export function registerRoutes(router: Router, app: App): Router {
+  // Web demo (the specs.com-style AR surface): route line + price/deal/store overlays.
+  router.get("/", () => ({ status: 200, body: loadDemo(), headers: { "content-type": "text/html; charset=utf-8" } }));
+
   router.get("/health", () => ok({ status: "ok", service: "smartcart" }));
 
   // Readiness: drivers configured + demo data present.
