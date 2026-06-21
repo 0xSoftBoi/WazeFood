@@ -76,6 +76,7 @@ Deep, independently-cited research memos that de-risk the product beyond the arc
 | [`docs/research/receipt-ocr-product-matching.md`](docs/research/receipt-ocr-product-matching.md) | **Buy OCR cheap, build matching.** A hosted VLM does OCR+extraction ~25–400× cheaper than Textract/Veryfi; the durable problem is cross-retailer entity resolution. Barcode-first makes ~70% of ingestion cost $0; cheap→expensive routing turns ~$1,000/mo into ~$30/mo. |
 | [`docs/research/realtime-geospatial.md`](docs/research/realtime-geospatial.md) | H3 res 8 is the universal cell; the scaffold's per-`product:store` cache key is already correct (cells hold many stores). Treat the broker as at-least-once + outbox/CDC; TimescaleDB for history at MVP, Redpanda later. |
 | [`docs/research/market-and-unit-economics.md`](docs/research/market-and-unit-economics.md) | A credible low-single-digit-millions-ARR niche, **not** a venture rocket. Economics only work on near-zero (Atozy/referral) CAC; k-factor ~0.4–0.7; this niche has a graveyard (Basket pulled Feb 2026). Validate 2nd-list ≥50%, savings/list ≥10%, k≥0.4 before metro #2. |
+| [`docs/research/anti-scraping.md`](docs/research/anti-scraping.md) | Protecting the data graph (the moat): defense-in-depth (OWASP OAT, JA4 edge, Play Integrity/App Attest/PAT, GCRA limits, behavioral scoring, honeytokens). **Buy the edge + adopt attestation; build the domain layer** (H3 geo-coherence + canaries) — which is implemented. |
 
 ## The one-paragraph version
 

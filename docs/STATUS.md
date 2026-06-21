@@ -28,7 +28,8 @@ IT_DURABLE=1 npm run test:it
 | **AR & glasses** | `/ar/scene` world-anchored overlays (price/aisle cards, deal pins, route line) tailored per tier (phone/web/Meta/Snap), POV-glasses capture into ingestion |
 | **Persistence** | Postgres (write-behind + hydrate, JSONB doc store) + Redis cache (mirror + write-behind), restart-durability integration-tested against live servers |
 | **Event log + relay** | Durable outbox records every domain event; a Relay drains it to a pluggable Sink (console/HTTP-webhook) with at-least-once delivery + retry — the bus → Kafka/CDC seam |
-| **Ops** | `/health`, `/ready`, `/metrics` (event + perception-cost stats), `/admin/outbox` |
+| **Anti-scraping** | Domain-specific abuse scoring (multi-dim velocity + H3 geo-coherence + honeytoken canaries) → allow/throttle/challenge/block, phased monitor/enforce — the data-graph moat layer (researched: `docs/research/anti-scraping.md`) |
+| **Ops** | `/health`, `/ready`, `/metrics` (events, perception cost, abuse stats), `/admin/outbox` |
 | **Delivery** | Dockerfile, CI (unit + smoke + live-DB integration job), web demo, OpenAPI spec, SQL migration |
 | **Research** | 4 cited memos: price-data sourcing & competition, receipt OCR & matching, real-time/geospatial, market & unit economics |
 
@@ -38,7 +39,8 @@ IT_DURABLE=1 npm run test:it
 - **True multi-node Redis** (async distributed reads) — today's cache is single-node durable (mirror + write-behind).
 - **Dedicated relational repositories** per `db/migrations/0001_init.sql` (the JSONB doc store backs all tables today); real **H3** (`h3-js`), pgvector embeddings for matching, TimescaleDB for history.
 - **Service extraction** (Ingestion → Optimization → Alerts → Pricing) — only when load triggers fire.
-- **Auth hardening** (OIDC/JWT vs the demo `Bearer user:<id>`), anti-scrape bot-scoring, SMS provider.
+- **Edge bot-management** (Cloudflare/Fastly JA4/WAF/DDoS) + **mobile attestation** (Play Integrity, App Attest, Private Access Tokens) — *buy/adopt at deployment*; the domain-specific scoring layer is already built (`docs/research/anti-scraping.md`).
+- **Auth hardening** (OIDC/JWT vs the demo `Bearer user:<id>`), SMS provider.
 - **Mobile app** (RN/Flutter) and native **AR/glasses clients** (ARKit/ARCore, Meta/Snap SDKs) — the web demo is the reference.
 - **ML in-house** (self-hosted OCR/VLM/embeddings) — managed APIs first, per the OCR memo's trigger.
 

@@ -5,6 +5,7 @@
 import type { Cache } from "../cache/cache.ts";
 import { rateLimited } from "../errors.ts";
 import type { Ctx, Middleware } from "./router.ts";
+import type { AbuseScoreService } from "../../modules/abuse/service.ts";
 
 function header(ctx: Ctx, name: string): string | undefined {
   const v = ctx.headers[name];
@@ -33,5 +34,45 @@ export function rateLimit(cache: Cache, perMinute: number): Middleware {
       throw rateLimited(`rate limit exceeded (${perMinute}/min)`);
     }
     return next();
+  };
+}
+
+function field(ctx: Ctx, name: string): string | undefined {
+  const fromQuery = ctx.query.get(name);
+  if (fromQuery !== null) return fromQuery;
+  const body = ctx.body;
+  if (body !== null && typeof body === "object" && name in body) {
+    const v = (body as Record<string, unknown>)[name];
+    return typeof v === "string" ? v : typeof v === "number" ? String(v) : undefined;
+  }
+  return undefined;
+}
+
+// Anti-scraping guard: scores each request on velocity + H3 geo-coherence + honeytokens and
+// acts on the decision (docs/research/anti-scraping.md). The heavy edge signals (JA4, DDoS) are
+// the CDN/WAF's job; this is the domain-specific layer. Sets x-abuse-score for observability.
+export function abuseGuard(abuse: AbuseScoreService): Middleware {
+  return async (ctx, next) => {
+    const latRaw = field(ctx, "lat");
+    const lngRaw = field(ctx, "lng");
+    const lat = latRaw === undefined ? undefined : Number(latRaw);
+    const lng = lngRaw === undefined ? undefined : Number(lngRaw);
+    const result = abuse.score({
+      deviceId: ctx.deviceId,
+      userId: ctx.userId,
+      route: ctx.path,
+      productId: field(ctx, "productId") ?? null,
+      lat: Number.isFinite(lat) ? lat : undefined,
+      lng: Number.isFinite(lng) ? lng : undefined,
+    });
+
+    if (result.decision === "block") {
+      return { status: 403, body: { error: "forbidden", message: "request blocked", reasons: result.reasons }, headers: { "x-abuse-score": String(result.score) } };
+    }
+    if (result.decision === "challenge") {
+      return { status: 429, body: { error: "challenge_required", message: "verify you are human", reasons: result.reasons }, headers: { "x-abuse-score": String(result.score) } };
+    }
+    const reply = await next();
+    return { ...reply, headers: { ...(reply.headers ?? {}), "x-abuse-score": String(result.score) } };
   };
 }

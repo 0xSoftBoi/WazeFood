@@ -22,6 +22,7 @@ import { ARSceneService } from "./modules/arscene/service.ts";
 import { MatchingService } from "./modules/matching/service.ts";
 import { RoutingPerception } from "./modules/ingestion/perception.ts";
 import { OutboxService } from "./modules/outbox/service.ts";
+import { AbuseScoreService } from "./modules/abuse/service.ts";
 
 export type App = ReturnType<typeof buildApp>;
 
@@ -41,6 +42,9 @@ export function buildApp(config: Config = loadConfig(), clock: Clock = systemClo
   // Outbox records every published event (durable event log); wired to the bus below.
   const outbox = new OutboxService({ tables });
   bus.onPublish((event) => outbox.record(event));
+
+  // Anti-scraping abuse scorer (the domain-specific layer; edge/attestation are bought).
+  const abuse = new AbuseScoreService({ cache, clock, h3Resolution, deviceHardPerMin: config.rateLimitPerMin });
 
   const identity = new IdentityService({ tables });
   const catalog = new CatalogService({ bus, h3Resolution, tables });
@@ -140,5 +144,5 @@ export function buildApp(config: Config = loadConfig(), clock: Clock = systemClo
   bus.on("deal.reported", (e) => { alerts.onDealReported(e); });
   bus.on("contribution.received", (e) => { gamification.awardForContribution(e.userId, e.kind, metroOf(e.storeId)); });
 
-  return { config, clock, cache, bus, outbox, identity, catalog, pricing, ingestion, entitlements, gamification, alerts, optimization, referral, lists, arscene, matching, perception };
+  return { config, clock, cache, bus, outbox, abuse, identity, catalog, pricing, ingestion, entitlements, gamification, alerts, optimization, referral, lists, arscene, matching, perception };
 }

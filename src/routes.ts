@@ -62,6 +62,7 @@ export function registerRoutes(router: Router, app: App): Router {
       products: app.catalog.listProducts().length,
       events: { total: app.outbox.count(), byType: app.outbox.countByType(), unpublished: app.outbox.unpublishedCount() },
       perception: app.perception.stats(),
+      abuse: app.abuse.metrics(),
     }),
   );
 

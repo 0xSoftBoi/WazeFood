@@ -61,6 +61,13 @@ export async function seedDemo(app: App): Promise<SeedRefs> {
   // A reported clearance deal (drives the local deals feed + AR deal pins).
   await app.bus.publish({ type: "deal.reported", storeId: walmart.id, productId: "prd_eggs", kind: "clearance", cell: cell(walmart.id) });
 
+  // Honeytoken canary products: real shoppers never request these; an enumerator scraping the
+  // whole catalog will, instantly flagging itself (docs/research/anti-scraping.md §4).
+  app.catalog.seedProduct({ id: "prd_canary_1", name: "__canary marker A__", brand: null, sizeValue: null, sizeUnit: null, category: "_canary", isStoreBrand: false, upc: "C0001" });
+  app.catalog.seedProduct({ id: "prd_canary_2", name: "__canary marker B__", brand: null, sizeValue: null, sizeUnit: null, category: "_canary", isStoreBrand: false, upc: "C0002" });
+  app.abuse.addCanary("prd_canary_1");
+  app.abuse.addCanary("prd_canary_2");
+
   return {
     metro,
     at: { lat: 40.7608, lng: -111.891 },

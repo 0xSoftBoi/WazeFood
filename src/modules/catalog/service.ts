@@ -77,8 +77,10 @@ export class CatalogService {
     return this.products.findOne((p) => p.upc === upc);
   }
 
+  // Honest surfaces exclude honeytoken canaries (category "_canary"); they stay directly
+  // addressable by id/UPC so an enumerator still trips them (docs/research/anti-scraping.md).
   listProducts(): Product[] {
-    return this.products.all();
+    return this.products.find((p) => p.category !== "_canary");
   }
 
   getStore(id: string): Store | undefined {
@@ -101,7 +103,7 @@ export class CatalogService {
 
   search(text: string): Product[] {
     const q = text.toLowerCase();
-    return this.products.find((p) => p.name.toLowerCase().includes(q));
+    return this.products.find((p) => p.category !== "_canary" && p.name.toLowerCase().includes(q));
   }
 
   async createUserProduct(input: Omit<Product, "id">): Promise<Product> {

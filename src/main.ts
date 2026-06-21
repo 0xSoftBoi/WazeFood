@@ -5,7 +5,7 @@
 import { bootstrap } from "./bootstrap.ts";
 import { loadConfig } from "./config.ts";
 import { Router } from "./platform/http/router.ts";
-import { identity, rateLimit } from "./platform/http/middleware.ts";
+import { identity, rateLimit, abuseGuard } from "./platform/http/middleware.ts";
 import { registerRoutes } from "./routes.ts";
 import { seedDemo } from "./seed.ts";
 import { Relay, consoleSink, httpSink } from "./modules/outbox/relay.ts";
@@ -23,7 +23,8 @@ async function main(): Promise<void> {
 
   const router = new Router()
     .use(identity())
-    .use(rateLimit(app.cache, config.rateLimitPerMin));
+    .use(rateLimit(app.cache, config.rateLimitPerMin)) // coarse first gate
+    .use(abuseGuard(app.abuse)); // domain-specific anti-scraping score → decision
   registerRoutes(router, app);
 
   // Write-behind flush loop for the durable drivers.
