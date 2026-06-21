@@ -72,6 +72,32 @@ export function registerRoutes(router: Router, app: App): Router {
     return ok({ count: app.outbox.count(), recent: app.outbox.recent(Number.isFinite(limit) ? limit : 50) });
   });
 
+  // --- Auth (anonymous-first; IdP-backed social login verified server-side) ---
+  // Start a guest session — no signup, data accrues to this user (the smooth onboarding path).
+  router.post("/auth/anonymous", (ctx) => {
+    const b = asBody(ctx.body);
+    return ok(app.auth.anonymous({ metro: optStr(b, "metro"), deviceId: ctx.deviceId }), 201);
+  });
+
+  // Upgrade a guest by signing in with a provider (Apple/Google/email) — same userId is kept.
+  router.post("/auth/link", (ctx) => {
+    const b = asBody(ctx.body);
+    const r = app.auth.link({ userId: str(b, "userId"), provider: str(b, "provider"), token: str(b, "token"), deviceId: ctx.deviceId });
+    return r.ok ? ok({ ...r.tokens, upgraded: r.upgraded, signedInToExisting: r.signedInToExisting }) : ok({ error: r.error }, 401);
+  });
+
+  // Rotate tokens (rotating refresh + reuse detection).
+  router.post("/auth/refresh", (ctx) => {
+    const r = app.auth.refresh(str(asBody(ctx.body), "refreshToken"));
+    return r.ok ? ok(r.tokens) : ok({ error: r.error }, 401);
+  });
+
+  // Revoke a session (logout / lost device).
+  router.post("/auth/logout", (ctx) => {
+    app.auth.revoke(str(asBody(ctx.body), "sid"));
+    return ok({ ok: true });
+  });
+
   // --- Identity ---
   router.post("/users", (ctx) => {
     const b = asBody(ctx.body);

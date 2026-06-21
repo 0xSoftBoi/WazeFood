@@ -22,7 +22,7 @@ async function main(): Promise<void> {
   await durable.flush();
 
   const router = new Router()
-    .use(identity())
+    .use(identity((token) => app.auth.verifyAccess(token))) // verify access JWT (anonymous-ok)
     .use(rateLimit(app.cache, config.rateLimitPerMin)) // coarse first gate
     .use(abuseGuard(app.abuse)); // domain-specific anti-scraping score → decision
   registerRoutes(router, app);

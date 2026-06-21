@@ -14,6 +14,9 @@ export type Config = {
   rateLimitPerMin: number;
   h3Resolution: number;
   outboxWebhookUrl: string | null;
+  authSecret: string;
+  accessTtlSec: number;
+  refreshTtlSec: number;
 };
 
 function int(value: string | undefined, fallback: number): number {
@@ -32,5 +35,8 @@ export function loadConfig(env: NodeJS.ProcessEnv = process.env): Config {
     rateLimitPerMin: int(env.RATELIMIT_PER_MIN, 120),
     h3Resolution: int(env.H3_RESOLUTION, 8),
     outboxWebhookUrl: env.OUTBOX_WEBHOOK_URL ?? null,
+    authSecret: env.AUTH_SECRET ?? "dev-insecure-secret-change-me",
+    accessTtlSec: int(env.ACCESS_TTL_SEC, 900), // 15 min
+    refreshTtlSec: int(env.REFRESH_TTL_SEC, 1_209_600), // 14 days
   };
 }

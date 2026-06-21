@@ -12,14 +12,15 @@ function header(ctx: Ctx, name: string): string | undefined {
   return Array.isArray(v) ? v[0] : v;
 }
 
-// Attaches deviceId (anonymous-ok) and userId (when a session token is present). The token
-// scheme is intentionally trivial here — swap for OIDC/JWT verification in production.
-export function identity(): Middleware {
+// Attaches deviceId (anonymous-ok) and userId (when a valid access JWT is present). Anonymous-
+// first: a missing/invalid token simply leaves userId null — the request still proceeds.
+export function identity(verifyAccess?: (token: string) => { userId: string } | null): Middleware {
   return async (ctx, next) => {
     ctx.deviceId = header(ctx, "x-device-id") ?? "anon-device";
-    const auth = header(ctx, "authorization");
-    if (auth?.startsWith("Bearer user:")) {
-      ctx.userId = auth.slice("Bearer user:".length);
+    const authz = header(ctx, "authorization");
+    if (authz?.startsWith("Bearer ") && verifyAccess !== undefined) {
+      const result = verifyAccess(authz.slice("Bearer ".length));
+      if (result !== null) ctx.userId = result.userId;
     }
     return next();
   };

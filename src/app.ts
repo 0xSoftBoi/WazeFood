@@ -23,6 +23,7 @@ import { MatchingService } from "./modules/matching/service.ts";
 import { RoutingPerception } from "./modules/ingestion/perception.ts";
 import { OutboxService } from "./modules/outbox/service.ts";
 import { AbuseScoreService } from "./modules/abuse/service.ts";
+import { AuthService, devVerifier } from "./modules/auth/service.ts";
 
 export type App = ReturnType<typeof buildApp>;
 
@@ -122,6 +123,20 @@ export function buildApp(config: Config = loadConfig(), clock: Clock = systemClo
     tables,
   });
 
+  // Auth: session minting + rotating refresh + anonymous→identity upgrade (IdP is bought).
+  const auth = new AuthService({
+    tables, clock,
+    verifier: devVerifier,
+    accessSecret: config.authSecret,
+    accessTtlSec: config.accessTtlSec,
+    refreshTtlSec: config.refreshTtlSec,
+    identity: {
+      getUser: (id) => identity.getUser(id),
+      createAnonymousUser: (input) => identity.createAnonymousUser(input),
+      attachAuth: (userId, provider) => identity.attachAuth(userId, provider),
+    },
+  });
+
   const referral = new ReferralService({
     bus,
     tables,
@@ -144,5 +159,5 @@ export function buildApp(config: Config = loadConfig(), clock: Clock = systemClo
   bus.on("deal.reported", (e) => { alerts.onDealReported(e); });
   bus.on("contribution.received", (e) => { gamification.awardForContribution(e.userId, e.kind, metroOf(e.storeId)); });
 
-  return { config, clock, cache, bus, outbox, abuse, identity, catalog, pricing, ingestion, entitlements, gamification, alerts, optimization, referral, lists, arscene, matching, perception };
+  return { config, clock, cache, bus, outbox, abuse, auth, identity, catalog, pricing, ingestion, entitlements, gamification, alerts, optimization, referral, lists, arscene, matching, perception };
 }

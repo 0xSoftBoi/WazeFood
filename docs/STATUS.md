@@ -29,6 +29,7 @@ IT_DURABLE=1 npm run test:it
 | **Persistence** | Postgres (write-behind + hydrate, JSONB doc store) + Redis cache (mirror + write-behind), restart-durability integration-tested against live servers |
 | **Event log + relay** | Durable outbox records every domain event; a Relay drains it to a pluggable Sink (console/HTTP-webhook) with at-least-once delivery + retry — the bus → Kafka/CDC seam |
 | **Anti-scraping** | Domain-specific abuse scoring (multi-dim velocity + H3 geo-coherence + honeytoken canaries) → allow/throttle/challenge/block, phased monitor/enforce — the data-graph moat layer (researched: `docs/research/anti-scraping.md`) |
+| **Auth & onboarding** | Anonymous-first sessions, short-lived access JWT + rotating refresh w/ reuse-detection + per-device revocation, OIDC-verify seam (Apple/Google JWKS = drop-in), and anonymous→identity **upgrade in place** (data preserved) — replaces the demo bearer (researched: `docs/research/auth-and-onboarding.md`) |
 | **Ops** | `/health`, `/ready`, `/metrics` (events, perception cost, abuse stats), `/admin/outbox` |
 | **Delivery** | Dockerfile, CI (unit + smoke + live-DB integration job), web demo, OpenAPI spec, SQL migration |
 | **Research** | 4 cited memos: price-data sourcing & competition, receipt OCR & matching, real-time/geospatial, market & unit economics |
@@ -40,7 +41,7 @@ IT_DURABLE=1 npm run test:it
 - **Dedicated relational repositories** per `db/migrations/0001_init.sql` (the JSONB doc store backs all tables today); pgvector embeddings for matching, TimescaleDB for history. (Real **H3** via `h3-js` is now done.)
 - **Service extraction** (Ingestion → Optimization → Alerts → Pricing) — only when load triggers fire.
 - **Edge bot-management** (Cloudflare/Fastly JA4/WAF/DDoS) + **mobile attestation** (Play Integrity, App Attest, Private Access Tokens) — *buy/adopt at deployment*; the domain-specific scoring layer is already built (`docs/research/anti-scraping.md`).
-- **Auth hardening** (OIDC/JWT vs the demo `Bearer user:<id>`), SMS provider.
+- **Buy the IdP** (Firebase/Stytch) for hosted social + passkeys + real Apple/Google JWKS verification (the `IdentityVerifier` seam + session layer + anonymous-upgrade are built). SMS provider for referral anti-fraud.
 - **Mobile app** (RN/Flutter) and native **AR/glasses clients** (ARKit/ARCore, Meta/Snap SDKs) — the web demo is the reference.
 - **ML in-house** (self-hosted OCR/VLM/embeddings) — managed APIs first, per the OCR memo's trigger.
 

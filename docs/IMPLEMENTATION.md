@@ -106,7 +106,7 @@ into a fresh process from Postgres + Redis — `test/persistence.it.test.ts`.
 | `MemoryCache` default | `CACHE_DRIVER=redis` → `RedisCache` (mirror+write-behind today; async distributed next) |
 | in-process `EventBus` | Kafka / Pub-Sub, with the transactional `outbox` table |
 | inline confidence scoring | async queue workers + replay (re-score on model change) |
-| `Bearer user:<id>` auth | OIDC/JWT verification |
+| `Bearer user:<id>` auth | ✅ now access JWT + rotating refresh (`auth` module); `devVerifier` → Apple/Google JWKS is the drop-in |
 | heuristic optimizer | OR/ILP planning tier behind the cache |
 | `matching` token-similarity | embeddings + ANN blocking over `products.embedding` (pgvector) |
 | `RoutingPerception` stub extractor | real barcode (on-device) + cheap VLM + escalation, same routing/cost model |
