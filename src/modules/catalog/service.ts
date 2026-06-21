@@ -5,7 +5,7 @@
 import type { EventBus } from "../../platform/events/bus.ts";
 import { cellOf, distanceMeters, type LatLng } from "../../platform/geo/h3.ts";
 import { newId } from "../../platform/id.ts";
-import { MemoryTable } from "../../platform/store/store.ts";
+import type { Table, TableFactory } from "../../platform/store/store.ts";
 
 export type Product = {
   id: string;
@@ -38,16 +38,22 @@ export type Swap = {
   supportCount: number;
 };
 
-export class CatalogService {
-  private readonly products = new MemoryTable<Product>();
-  private readonly stores = new MemoryTable<Store>();
-  private readonly swaps = new MemoryTable<Swap>();
-  // Crowdsourced "where is this product in the store" (PDF: aisle/location reporting).
-  private readonly aisles = new MemoryTable<{ id: string; storeId: string; productId: string; section: string; updatedAt: string }>();
+type Aisle = { id: string; storeId: string; productId: string; section: string; updatedAt: string };
 
-  private readonly deps: { bus: EventBus; h3Resolution: number };
-  constructor(deps: { bus: EventBus; h3Resolution: number }) {
+export class CatalogService {
+  private readonly products: Table<Product>;
+  private readonly stores: Table<Store>;
+  private readonly swaps: Table<Swap>;
+  // Crowdsourced "where is this product in the store" (PDF: aisle/location reporting).
+  private readonly aisles: Table<Aisle>;
+
+  private readonly deps: { bus: EventBus; h3Resolution: number; tables: TableFactory };
+  constructor(deps: { bus: EventBus; h3Resolution: number; tables: TableFactory }) {
     this.deps = deps;
+    this.products = deps.tables<Product>("products");
+    this.stores = deps.tables<Store>("stores");
+    this.swaps = deps.tables<Swap>("swaps");
+    this.aisles = deps.tables<Aisle>("aisles");
   }
 
   seedProduct(p: Omit<Product, "id"> & { id?: string }): Product {

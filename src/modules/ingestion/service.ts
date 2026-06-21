@@ -7,7 +7,7 @@ import type { EventBus } from "../../platform/events/bus.ts";
 import { cellOf, distanceMeters } from "../../platform/geo/h3.ts";
 import { newId } from "../../platform/id.ts";
 import { badRequest } from "../../platform/errors.ts";
-import { MemoryTable } from "../../platform/store/store.ts";
+import type { Table, TableFactory } from "../../platform/store/store.ts";
 import type { ContributionType } from "../../platform/events/events.ts";
 import { scoreConfidence } from "./confidence.ts";
 
@@ -75,7 +75,7 @@ export type PerceptionPort = {
 const GEOFENCE_RADIUS_M = 200; // "was the user actually at the store?"
 
 export class IngestionService {
-  private readonly contributions = new MemoryTable<Contribution>();
+  private readonly contributions: Table<Contribution>;
 
   private readonly deps: {
     bus: EventBus;
@@ -85,6 +85,7 @@ export class IngestionService {
     locations: LocationPort;
     matching: MatchingPort;
     perception: PerceptionPort;
+    tables: TableFactory;
     h3Resolution: number;
   };
   constructor(deps: {
@@ -95,9 +96,11 @@ export class IngestionService {
     locations: LocationPort;
     matching: MatchingPort;
     perception: PerceptionPort;
+    tables: TableFactory;
     h3Resolution: number;
   }) {
     this.deps = deps;
+    this.contributions = deps.tables<Contribution>("contributions");
   }
 
   getContribution(id: string): Contribution | undefined {

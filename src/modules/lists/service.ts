@@ -4,7 +4,7 @@
 
 import { cellOf, type LatLng } from "../../platform/geo/h3.ts";
 import { newId } from "../../platform/id.ts";
-import { MemoryTable } from "../../platform/store/store.ts";
+import type { Table, TableFactory } from "../../platform/store/store.ts";
 
 export type ItemPrefs = {
   brandRequired: boolean;
@@ -39,12 +39,14 @@ export type PricingPort = {
 };
 
 export class ListsService {
-  private readonly lists = new MemoryTable<List>();
-  private readonly items = new MemoryTable<ListItem>();
+  private readonly lists: Table<List>;
+  private readonly items: Table<ListItem>;
 
-  private readonly deps: { activity?: ActivityPort; pricing?: PricingPort; h3Resolution: number };
-  constructor(deps: { activity?: ActivityPort; pricing?: PricingPort; h3Resolution: number }) {
+  private readonly deps: { activity?: ActivityPort; pricing?: PricingPort; h3Resolution: number; tables: TableFactory };
+  constructor(deps: { activity?: ActivityPort; pricing?: PricingPort; h3Resolution: number; tables: TableFactory }) {
     this.deps = deps;
+    this.lists = deps.tables<List>("lists");
+    this.items = deps.tables<ListItem>("list_items");
   }
 
   createList(ownerId: string, name: string): List {

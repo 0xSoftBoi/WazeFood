@@ -95,7 +95,9 @@ confidence scoring, price-drop alerts, gamification, token-gated explainable opt
 referral activation), an **AR/smart-glasses scene layer** (price/aisle cards, deal pins, route
 line, per device tier + POV-glasses capture), and **barcode-first ingestion** (entity-resolution
 matching + cheap→expensive perception routing with cost accounting + media-hash dedup) — with 33
-passing tests and a clean typecheck. Storage/cache/bus run on
-in-memory adapters today and swap to Postgres+PostGIS / Redis / Kafka via the documented seams
-(`db/migrations/`, `docker-compose.yml`). Next: persistence adapters, mobile client, and the
-service extractions in [`docs/scaling-playbook.md`](docs/scaling-playbook.md).
+passing tests and a clean typecheck. **Persistence is wired and integration-tested**: the default
+is zero-dependency in-memory, and `STORE_DRIVER=postgres` / `CACHE_DRIVER=redis` graduate to real
+Postgres + Redis via write-behind + hydrate behind the same module interfaces — restart-durability
+proven in `test/persistence.it.test.ts` (`IT_DURABLE=1 npm run test:it`). Next: the event bus →
+Kafka/outbox, mobile client, and the service extractions in
+[`docs/scaling-playbook.md`](docs/scaling-playbook.md).

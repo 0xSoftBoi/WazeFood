@@ -5,7 +5,7 @@
 
 import type { EventBus } from "../../platform/events/bus.ts";
 import { newId } from "../../platform/id.ts";
-import { MemoryTable } from "../../platform/store/store.ts";
+import type { Table, TableFactory } from "../../platform/store/store.ts";
 
 export type ReferralStatus = "invited" | "joined" | "activated" | "ineligible";
 
@@ -35,12 +35,14 @@ export type IdentityPort = { getUser: (id: string) => { phoneVerified: boolean; 
 export type RewardPort = { grantPremiumDays: (userId: string, days: number, source: string) => void };
 
 export class ReferralService {
-  private readonly referrals = new MemoryTable<Referral>();
-  private readonly signals = new MemoryTable<Signals>();
+  private readonly referrals: Table<Referral>;
+  private readonly signals: Table<Signals>;
 
-  private readonly deps: { bus: EventBus; identity: IdentityPort; rewards: RewardPort };
-  constructor(deps: { bus: EventBus; identity: IdentityPort; rewards: RewardPort }) {
+  private readonly deps: { bus: EventBus; identity: IdentityPort; rewards: RewardPort; tables: TableFactory };
+  constructor(deps: { bus: EventBus; identity: IdentityPort; rewards: RewardPort; tables: TableFactory }) {
     this.deps = deps;
+    this.referrals = deps.tables<Referral>("referrals");
+    this.signals = deps.tables<Signals>("referral_signals");
   }
 
   createInvite(referrerId: string): Referral {

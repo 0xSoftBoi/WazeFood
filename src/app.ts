@@ -5,7 +5,8 @@
 
 import { type Config, loadConfig } from "./config.ts";
 import { systemClock, type Clock } from "./platform/clock.ts";
-import { MemoryCache } from "./platform/cache/cache.ts";
+import { MemoryCache, type Cache } from "./platform/cache/cache.ts";
+import { memoryTableFactory, type TableFactory } from "./platform/store/store.ts";
 import { EventBus } from "./platform/events/bus.ts";
 import { IdentityService } from "./modules/identity/service.ts";
 import { CatalogService } from "./modules/catalog/service.ts";
@@ -23,22 +24,28 @@ import { RoutingPerception } from "./modules/ingestion/perception.ts";
 
 export type App = ReturnType<typeof buildApp>;
 
-export function buildApp(config: Config = loadConfig(), clock: Clock = systemClock) {
-  const cache = new MemoryCache(clock);
+// Optional overrides let a durable bootstrap inject a persistent table factory and a Redis
+// cache (see src/bootstrap.ts); defaults are the zero-dependency in-memory adapters.
+export type BuildOpts = { tables?: TableFactory; cache?: Cache };
+
+export function buildApp(config: Config = loadConfig(), clock: Clock = systemClock, opts: BuildOpts = {}) {
+  const cache = opts.cache ?? new MemoryCache(clock);
+  const tables = opts.tables ?? memoryTableFactory;
   const bus = new EventBus(({ event, error }) => {
     console.error(`[bus] handler failed for ${event.type}:`, error);
   });
   const h3Resolution = config.h3Resolution;
 
   // --- Services (no cross-module wiring yet) ---
-  const identity = new IdentityService();
-  const catalog = new CatalogService({ bus, h3Resolution });
-  const gamification = new GamificationService({ cache, clock });
-  const entitlements = new EntitlementsService({ cache, clock });
+  const identity = new IdentityService({ tables });
+  const catalog = new CatalogService({ bus, h3Resolution, tables });
+  const gamification = new GamificationService({ cache, clock, tables });
+  const entitlements = new EntitlementsService({ cache, clock, tables });
 
   const pricing = new PricingService({
     bus,
     cache,
+    tables,
     stores: {
       nearby: (at, r) =>
         catalog.nearbyStores(at, r).map((s) => ({ id: s.id, lat: s.lat, lng: s.lng, cell: s.cell, distanceMeters: s.distanceMeters })),
@@ -56,6 +63,7 @@ export function buildApp(config: Config = loadConfig(), clock: Clock = systemClo
   const ingestion = new IngestionService({
     bus,
     h3Resolution,
+    tables,
     stores: { get: (id) => { const s = catalog.getStore(id); return s === undefined ? undefined : { lat: s.lat, lng: s.lng, metro: s.metro }; } },
     reputation: { reputation: (userId) => gamification.reputation(userId) },
     priorPrice: { getProjection: (p, s) => pricing.getProjection(p, s) },
@@ -102,16 +110,19 @@ export function buildApp(config: Config = loadConfig(), clock: Clock = systemClo
   const alerts = new AlertsService({
     entitlements: { isPremium: (userId) => entitlements.isPremium(userId) },
     h3Resolution,
+    tables,
   });
 
   const referral = new ReferralService({
     bus,
+    tables,
     identity: { getUser: (id) => { const u = identity.getUser(id); return u === undefined ? undefined : { phoneVerified: u.phoneVerified, homeZip: u.homeZip }; } },
     rewards: { grantPremiumDays: (userId, days, source) => entitlements.grantPremiumDays(userId, days, source) },
   });
 
   const lists = new ListsService({
     h3Resolution,
+    tables,
     activity: { recordActivity: (userId, delta) => referral.recordActivity(userId, delta) },
     pricing: { bestNearbyPrice: (p, at, r) => pricing.bestNearbyPrice(p, at, r) },
   });

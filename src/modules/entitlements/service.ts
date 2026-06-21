@@ -6,7 +6,7 @@
 import type { Cache } from "../../platform/cache/cache.ts";
 import type { Clock } from "../../platform/clock.ts";
 import { err, ok, type Result } from "../../platform/result.ts";
-import { MemoryTable } from "../../platform/store/store.ts";
+import type { Table, TableFactory } from "../../platform/store/store.ts";
 
 export type Feature = "item_compare" | "cart_optimize" | "image_search" | "route" | "price_alert";
 
@@ -24,12 +24,14 @@ export type Grant = { id: string; userId: string; feature: string; source: strin
 export type CheckResult = { allowed: true; remaining: number | "unlimited" };
 
 export class EntitlementsService {
-  private readonly premiumUntil = new MemoryTable<{ id: string; until: string }>();
-  private readonly grants = new MemoryTable<Grant>();
+  private readonly premiumUntil: Table<{ id: string; until: string }>;
+  private readonly grants: Table<Grant>;
 
-  private readonly deps: { cache: Cache; clock: Clock };
-  constructor(deps: { cache: Cache; clock: Clock }) {
+  private readonly deps: { cache: Cache; clock: Clock; tables: TableFactory };
+  constructor(deps: { cache: Cache; clock: Clock; tables: TableFactory }) {
     this.deps = deps;
+    this.premiumUntil = deps.tables<{ id: string; until: string }>("premium_until");
+    this.grants = deps.tables<Grant>("entitlement_grants");
   }
 
   private period(): string {

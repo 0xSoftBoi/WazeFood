@@ -5,7 +5,7 @@
 import { cellOf, kRing, ringForMeters, type LatLng } from "../../platform/geo/h3.ts";
 import { newId } from "../../platform/id.ts";
 import { err, ok, type Result } from "../../platform/result.ts";
-import { MemoryTable } from "../../platform/store/store.ts";
+import type { Table, TableFactory } from "../../platform/store/store.ts";
 import type { ContributionType } from "../../platform/events/events.ts";
 
 export type Watch = {
@@ -42,14 +42,17 @@ export type Deal = {
 };
 
 export class AlertsService {
-  private readonly watches = new MemoryTable<Watch>();
-  private readonly notifications = new MemoryTable<Notification>();
+  private readonly watches: Table<Watch>;
+  private readonly notifications: Table<Notification>;
   // Local daily deals feed (PDF "Local Daily Deals"); also drives AR deal pins.
-  private readonly deals = new MemoryTable<Deal>();
+  private readonly deals: Table<Deal>;
 
-  private readonly deps: { entitlements: EntitlementsPort; h3Resolution: number };
-  constructor(deps: { entitlements: EntitlementsPort; h3Resolution: number }) {
+  private readonly deps: { entitlements: EntitlementsPort; h3Resolution: number; tables: TableFactory };
+  constructor(deps: { entitlements: EntitlementsPort; h3Resolution: number; tables: TableFactory }) {
     this.deps = deps;
+    this.watches = deps.tables<Watch>("watches");
+    this.notifications = deps.tables<Notification>("notifications");
+    this.deals = deps.tables<Deal>("deals");
   }
 
   addWatch(

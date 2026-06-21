@@ -2,7 +2,7 @@
 // signup; auth is attached later when the user saves a list. Owns users + devices.
 
 import { newId } from "../../platform/id.ts";
-import { MemoryTable } from "../../platform/store/store.ts";
+import type { Table, TableFactory } from "../../platform/store/store.ts";
 
 export type Plan = "free" | "premium";
 export type RoutingMode = "chill" | "balanced" | "max";
@@ -25,8 +25,13 @@ export type Device = {
 };
 
 export class IdentityService {
-  private readonly users = new MemoryTable<User>();
-  private readonly devices = new MemoryTable<Device>();
+  private readonly users: Table<User>;
+  private readonly devices: Table<Device>;
+
+  constructor(deps: { tables: TableFactory }) {
+    this.users = deps.tables<User>("users");
+    this.devices = deps.tables<Device>("devices");
+  }
 
   createAnonymousUser(input: { metro?: string; platform?: string; deviceId?: string }): User {
     const now = new Date().toISOString();

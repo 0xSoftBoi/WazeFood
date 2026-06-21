@@ -6,7 +6,7 @@
 import type { Cache } from "../../platform/cache/cache.ts";
 import type { EventBus } from "../../platform/events/bus.ts";
 import type { LatLng } from "../../platform/geo/h3.ts";
-import { MemoryTable } from "../../platform/store/store.ts";
+import type { Table, TableFactory } from "../../platform/store/store.ts";
 import type { PriceSource } from "../../platform/events/events.ts";
 
 export type CurrentPrice = {
@@ -51,12 +51,14 @@ function key(productId: string, storeId: string): string {
 }
 
 export class PricingService {
-  private readonly projection = new MemoryTable<CurrentPrice>();
-  private readonly history = new MemoryTable<PriceHistoryRow>();
+  private readonly projection: Table<CurrentPrice>;
+  private readonly history: Table<PriceHistoryRow>;
 
-  private readonly deps: { bus: EventBus; cache: Cache; stores: StoreLocatorPort };
-  constructor(deps: { bus: EventBus; cache: Cache; stores: StoreLocatorPort }) {
+  private readonly deps: { bus: EventBus; cache: Cache; stores: StoreLocatorPort; tables: TableFactory };
+  constructor(deps: { bus: EventBus; cache: Cache; stores: StoreLocatorPort; tables: TableFactory }) {
     this.deps = deps;
+    this.projection = deps.tables<CurrentPrice>("current_price");
+    this.history = deps.tables<PriceHistoryRow>("price_history");
   }
 
   // Event handler: write-through projection update + history append + drop detection.

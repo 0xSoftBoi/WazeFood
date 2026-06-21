@@ -5,7 +5,7 @@
 
 import type { Cache } from "../../platform/cache/cache.ts";
 import type { Clock } from "../../platform/clock.ts";
-import { MemoryTable } from "../../platform/store/store.ts";
+import type { Table, TableFactory } from "../../platform/store/store.ts";
 import type { ContributionType } from "../../platform/events/events.ts";
 
 // Higher-confidence contribution types earn more (the PDF's weighted karma table).
@@ -22,11 +22,12 @@ const KARMA: Record<ContributionType, number> = {
 export type LeaderboardWindow = "weekly" | "monthly" | "alltime";
 
 export class GamificationService {
-  private readonly karma = new MemoryTable<{ id: string; total: number }>();
+  private readonly karma: Table<{ id: string; total: number }>;
 
-  private readonly deps: { cache: Cache; clock: Clock };
-  constructor(deps: { cache: Cache; clock: Clock }) {
+  private readonly deps: { cache: Cache; clock: Clock; tables: TableFactory };
+  constructor(deps: { cache: Cache; clock: Clock; tables: TableFactory }) {
     this.deps = deps;
+    this.karma = deps.tables<{ id: string; total: number }>("karma");
   }
 
   private windowKeys(metro: string): Record<LeaderboardWindow, string> {

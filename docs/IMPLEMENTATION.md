@@ -72,13 +72,38 @@ The end-to-end test (`test/e2e.test.ts`) proves the whole loop through these sea
 contribute (idempotent) → `price.updated` → projection → `price.dropped` → alert fan-out →
 karma/leaderboard → token-gated, explainable optimization.
 
+## Durable mode (Postgres + Redis)
+
+The in-memory adapters are the default; durable drivers are wired and integration-tested:
+
+```bash
+docker compose up -d            # or run Postgres + Redis locally
+STORE_DRIVER=postgres CACHE_DRIVER=redis \
+  DATABASE_URL=postgres://smartcart:smartcart@localhost:5432/smartcart \
+  REDIS_URL=redis://localhost:6379 npm start
+IT_DURABLE=1 npm run test:it    # proves restart durability against live PG + Redis
+```
+
+How it works without making domain logic async:
+- **`src/bootstrap.ts`** selects drivers from config, hydrates from storage, returns `flush`/`close`.
+- **Store** → `PgPersistor` (`platform/store/pg.ts`): a generic JSONB `doc_rows` backing. Every
+  `Table<T>` mutation is **mirrored write-behind**; `hydrate()` reloads rows at startup. Reads
+  stay synchronous and in-memory, so no service changed shape — they just take a `TableFactory`.
+- **Cache** → `RedisCache` (`platform/cache/redis.ts`): a synchronous local mirror with
+  write-behind to Redis; `init()` hydrates counters/leaderboards. (Multi-node async reads are the
+  next step.)
+- **`main.ts`** flushes on a 2s loop and on SIGINT/SIGTERM, and only seeds when the catalog is empty.
+
+Verified: data written by one process (a crowdsourced $4.42 price, a contribution, karma) hydrates
+into a fresh process from Postgres + Redis — `test/persistence.it.test.ts`.
+
 ## What's a stand-in (and the production swap)
 
 | Scaffold | Production |
 |---|---|
 | `platform/geo/h3.ts` | `h3-js` (true hexagons) — reimplement one file |
-| `MemoryTable` | Postgres via `db/migrations/0001_init.sql` (STORE_DRIVER=postgres) |
-| `MemoryCache` | Redis (CACHE_DRIVER=redis) |
+| `MemoryTable` default | `STORE_DRIVER=postgres` → JSONB `doc_rows`; dedicated relational repos per `db/migrations/0001_init.sql` later |
+| `MemoryCache` default | `CACHE_DRIVER=redis` → `RedisCache` (mirror+write-behind today; async distributed next) |
 | in-process `EventBus` | Kafka / Pub-Sub, with the transactional `outbox` table |
 | inline confidence scoring | async queue workers + replay (re-score on model change) |
 | `Bearer user:<id>` auth | OIDC/JWT verification |

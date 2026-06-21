@@ -4,10 +4,11 @@ import { MemoryCache } from "../../platform/cache/cache.ts";
 import { fixedClock } from "../../platform/clock.ts";
 import { EntitlementsService } from "./service.ts";
 import { isOk } from "../../platform/result.ts";
+import { memoryTableFactory } from "../../platform/store/store.ts";
 
 function svc() {
   const clock = fixedClock(new Date("2026-06-20T00:00:00Z"));
-  return new EntitlementsService({ cache: new MemoryCache(clock), clock });
+  return new EntitlementsService({ cache: new MemoryCache(clock), clock, tables: memoryTableFactory });
 }
 
 test("free users get a metered number of cart optimizations then are gated", () => {

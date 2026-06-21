@@ -13,10 +13,16 @@
     "test": "node --test --experimental-test-coverage 'src/**/*.test.ts' 'test/**/*.test.ts'",
     "test:watch": "node --test --watch 'src/**/*.test.ts'",
     "typecheck": "tsc --noEmit",
-    "smoke": "node scripts/smoke.ts"
+    "smoke": "node scripts/smoke.ts",
+    "test:it": "node --test test/persistence.it.test.ts"
   },
   "devDependencies": {
     "@types/node": "^22.20.0",
+    "@types/pg": "^8.20.0",
     "typescript": "^5.6.0"
+  },
+  "dependencies": {
+    "pg": "^8.22.0",
+    "redis": "^6.0.0"
   }
 }
