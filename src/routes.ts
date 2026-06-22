@@ -172,6 +172,32 @@ export function registerRoutes(router: Router, app: App): Router {
     return list === undefined ? (() => { throw notFound("list"); })() : ok(list);
   });
 
+  // List with each item's best nearby price + a cart total (the screen-shaped payoff view).
+  router.get("/lists/:id/priced", (ctx) => {
+    const list = app.lists.getList(ctx.params.id!);
+    if (list === undefined) throw notFound("list");
+    const lat = Number(ctx.query.get("lat"));
+    const lng = Number(ctx.query.get("lng"));
+    if (!Number.isFinite(lat) || !Number.isFinite(lng)) throw badRequest("lat, lng required");
+    const radius = Number(ctx.query.get("radius") ?? "15000");
+    const at = { lat, lng };
+    const items = list.items.map((it) => {
+      const product = app.catalog.getProduct(it.productId);
+      const best = app.pricing.bestNearbyPrice(it.productId, at, Number.isFinite(radius) ? radius : 15000);
+      return {
+        id: it.id,
+        productId: it.productId,
+        qty: it.qty,
+        name: product?.name ?? it.productId,
+        brand: product?.brand ?? null,
+        best: best === undefined ? null : { price: best.price, storeId: best.storeId, confidence: best.confidence, distanceMeters: best.distanceMeters },
+        lineTotal: best === undefined ? null : Math.round(best.price * it.qty * 100) / 100,
+      };
+    });
+    const total = Math.round(items.reduce((sum, i) => sum + (i.lineTotal ?? 0), 0) * 100) / 100;
+    return ok({ id: list.id, name: list.name, items, total, pricedCount: items.filter((i) => i.best !== null).length, itemCount: items.length });
+  });
+
   router.post("/lists/:id/items", (ctx) => {
     const b = asBody(ctx.body);
     const item = app.lists.addItem({

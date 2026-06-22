@@ -7,12 +7,22 @@
     "orientation": "portrait",
     "userInterfaceStyle": "automatic",
     "newArchEnabled": true,
+    "backgroundColor": "#FFFFFF",
+    "splash": {
+      "resizeMode": "contain",
+      "backgroundColor": "#06A36A",
+      "dark": { "backgroundColor": "#000000" }
+    },
     "ios": {
       "supportsTablet": true,
-      "bundleIdentifier": "com.smartcart.app"
+      "bundleIdentifier": "com.smartcart.app",
+      "infoPlist": {
+        "NSCameraUsageDescription": "SmartCart uses the camera to scan grocery barcodes and look up the best nearby price."
+      }
     },
     "android": {
-      "package": "com.smartcart.app"
+      "package": "com.smartcart.app",
+      "permissions": ["android.permission.CAMERA"]
     },
     "web": {
       "bundler": "metro",
@@ -20,7 +30,8 @@
     },
     "plugins": [
       "expo-router",
-      "expo-asset"
+      "expo-asset",
+      "expo-font"
     ],
     "experiments": {
       "typedRoutes": true

@@ -455,6 +455,84 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/deals/near": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Deals and clearances reported nearby (H3 kRing feed) */
+        get: {
+            parameters: {
+                query: {
+                    lat: number;
+                    lng: number;
+                    radius?: number;
+                };
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description ok */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["DealsNear"];
+                    };
+                };
+            };
+        };
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/users/{id}/gamification": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Karma, reputation, and earned badges */
+        get: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    id: string;
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description ok */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["Gamification"];
+                    };
+                };
+            };
+        };
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/lists": {
         parameters: {
             query?: never;
@@ -472,14 +550,23 @@ export interface paths {
                 path?: never;
                 cookie?: never;
             };
-            requestBody?: never;
+            requestBody?: {
+                content: {
+                    "application/json": {
+                        ownerId: string;
+                        name?: string;
+                    };
+                };
+            };
             responses: {
                 /** @description created */
                 201: {
                     headers: {
                         [name: string]: unknown;
                     };
-                    content?: never;
+                    content: {
+                        "application/json": components["schemas"]["List"];
+                    };
                 };
             };
         };
@@ -513,7 +600,60 @@ export interface paths {
                     headers: {
                         [name: string]: unknown;
                     };
+                    content: {
+                        "application/json": components["schemas"]["List"] & {
+                            items?: components["schemas"]["ListItem"][];
+                        };
+                    };
+                };
+                /** @description not found */
+                404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
                     content?: never;
+                };
+            };
+        };
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/lists/{id}/priced": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** List with each item's best nearby price + a cart total */
+        get: {
+            parameters: {
+                query: {
+                    lat: number;
+                    lng: number;
+                    radius?: number;
+                };
+                header?: never;
+                path: {
+                    id: string;
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description ok */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["PricedList"];
+                    };
                 };
                 /** @description not found */
                 404: {
@@ -551,14 +691,24 @@ export interface paths {
                 };
                 cookie?: never;
             };
-            requestBody?: never;
+            requestBody?: {
+                content: {
+                    "application/json": {
+                        ownerId: string;
+                        productId: string;
+                        qty?: number;
+                    };
+                };
+            };
             responses: {
                 /** @description created */
                 201: {
                     headers: {
                         [name: string]: unknown;
                     };
-                    content?: never;
+                    content: {
+                        "application/json": components["schemas"]["ListItem"];
+                    };
                 };
             };
         };
@@ -692,7 +842,17 @@ export interface paths {
                 path?: never;
                 cookie?: never;
             };
-            requestBody?: never;
+            requestBody?: {
+                content: {
+                    "application/json": {
+                        userId: string;
+                        productId: string;
+                        lat: number;
+                        lng: number;
+                        radius?: number;
+                    };
+                };
+            };
             responses: {
                 /** @description created */
                 201: {
@@ -741,7 +901,9 @@ export interface paths {
                     headers: {
                         [name: string]: unknown;
                     };
-                    content?: never;
+                    content: {
+                        "application/json": components["schemas"]["Leaderboard"];
+                    };
                 };
             };
         };
@@ -933,6 +1095,69 @@ export interface components {
             asOf?: string;
             distanceMeters?: number;
         };
+        Deal: {
+            id: string;
+            storeId: string;
+            productId?: string | null;
+            /** @enum {string} */
+            kind: "price" | "receipt" | "shelf" | "clearance" | "oos" | "aisle" | "coupon";
+            cell?: string;
+            /** Format: date-time */
+            createdAt?: string;
+        };
+        DealsNear: {
+            deals: components["schemas"]["Deal"][];
+        };
+        List: {
+            id: string;
+            ownerId: string;
+            householdId?: string | null;
+            name: string;
+            /** Format: date-time */
+            createdAt: string;
+        };
+        ListItem: {
+            id: string;
+            listId: string;
+            productId: string;
+            qty: number;
+        };
+        PricedListItem: {
+            id: string;
+            productId: string;
+            qty: number;
+            name: string;
+            brand?: string | null;
+            best?: {
+                price?: number;
+                storeId?: string;
+                confidence?: number;
+                distanceMeters?: number;
+            } | null;
+            lineTotal?: number | null;
+        };
+        PricedList: {
+            id: string;
+            name: string;
+            items: components["schemas"]["PricedListItem"][];
+            total: number;
+            pricedCount: number;
+            itemCount: number;
+        };
+        Gamification: {
+            karma: number;
+            reputation: number;
+            badges: string[];
+        };
+        LeaderboardEntry: {
+            userId: string;
+            score: number;
+        };
+        Leaderboard: {
+            window: string;
+            metro: string;
+            entries: components["schemas"]["LeaderboardEntry"][];
+        };
         CartPlan: {
             /** @enum {string} */
             mode?: "chill" | "balanced" | "max";
@@ -948,6 +1173,16 @@ export interface components {
                 coupons?: number;
                 gasEstimate?: number;
             };
+            stores?: {
+                storeId?: string;
+                items?: {
+                    productId?: string;
+                    qty?: number;
+                    storeId?: string;
+                    unitPrice?: number;
+                    swappedFrom?: string | null;
+                }[];
+            }[];
         };
         Contribution: {
             id?: string;

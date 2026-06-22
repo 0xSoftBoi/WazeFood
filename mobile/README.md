@@ -1,37 +1,49 @@
 # SmartCart mobile (Expo)
 
 One React Native codebase that runs on **web, iOS, and Android** (Expo + Expo Router +
-`react-native-web`). This is the first **vertical slice**: anonymous session → product search →
-best nearby price, talking to the SmartCart backend through a typed client generated from the
-OpenAPI spec.
+`react-native-web`), built to an iOS-grade bar. It talks to the SmartCart backend through a **typed
+client generated from the OpenAPI spec**.
 
 ## Run
 
 ```bash
-# 1) start the backend (from the repo root, in another terminal)
+# 1) backend (repo root, separate terminal)
 npm start                       # API on http://localhost:3000
 
-# 2) install + run the app (from this mobile/ dir)
+# 2) app (this dir)
 npm install
-npm run web                     # opens in the browser
+npm run web                     # browser
 npm run ios                     # iOS simulator (Xcode)
 npm run android                 # Android emulator
 npm run typecheck               # tsc --noEmit
 ```
 
-Point the app at a different backend with `EXPO_PUBLIC_API_URL` (e.g. your LAN IP for a physical
-device). Host defaults: web/iOS-sim use `localhost`; the Android emulator uses `10.0.2.2`.
+Point at another backend with `EXPO_PUBLIC_API_URL`. Host defaults: web/iOS-sim use `localhost`;
+the Android emulator uses `10.0.2.2`.
 
-## Layout
+## What's in it
 
-- `app/` — Expo Router screens (`_layout.tsx`, `index.tsx` = the slice).
-- `src/api/schema.ts` — **generated** from `../openapi/openapi.yaml` (run `npm run gen:api` at the
-  repo root to regenerate); do not edit by hand.
-- `src/api/client.ts` — thin typed fetch client over the generated types (x-device-id + bearer).
-- `src/session.tsx` — anonymous-first session provider; holds the access token.
-- `src/config.ts` — API base URL + demo location.
+A full anonymous-first MVP:
+
+- **Home** — large-title search, quick chips, and a live "deals near you" feed.
+- **Product** — best nearby price (store, distance, confidence), add-to-list, watch-price.
+- **List** — every item priced, a running cart total, and one-tap **trip optimization** (savings).
+- **Scan** — `expo-camera` barcode scanner → resolves the product → jumps to its price.
+- **You** — karma, rank, badges, and the weekly contributor leaderboard.
+
+## Architecture
+
+- `src/ui/` — the **design system**: theme tokens (light/dark, type scale, spacing, radius,
+  elevation) + primitives (`Text`, `Button`, `Card`, `Screen`, `Input`, `Badge`, `PriceTag`,
+  `Skeleton`, `EmptyState`). Nothing hardcodes a color.
+- `app/` — Expo Router. `_layout.tsx` wires providers; `(tabs)/` is the tab bar; `product/[id].tsx`
+  is the detail screen.
+- `src/api/schema.ts` — **generated** from `../openapi/openapi.yaml` (`npm run gen:api` at repo root;
+  do not edit). `src/api/client.ts` is the typed fetch client.
+- `src/session.tsx` — anonymous-first session (token persisted via AsyncStorage), location, and the
+  current list handle.
 
 ## Next
 
-Persist the session (AsyncStorage / SecureStore), add the list / scan (expo-camera) / map screens,
-and the social sign-in upgrade (`/auth/link`).
+Social-login upgrade (`/auth/link`), real geolocation (`expo-location`), a map screen, receipt-photo
+capture into the ingestion pipeline, and app icon/splash artwork.

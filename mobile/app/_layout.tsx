@@ -1,14 +1,40 @@
+import "react-native-gesture-handler";
+import { GestureHandlerRootView } from "react-native-gesture-handler";
+import { SafeAreaProvider } from "react-native-safe-area-context";
 import { Stack } from "expo-router";
 import { StatusBar } from "expo-status-bar";
+import { ThemeProvider, useTheme } from "../src/ui";
 import { SessionProvider } from "../src/session";
+
+function Navigator() {
+  const t = useTheme();
+  return (
+    <Stack
+      screenOptions={{
+        headerStyle: { backgroundColor: t.colors.bg },
+        headerTintColor: t.colors.primary,
+        headerTitleStyle: { color: t.colors.textPrimary },
+        headerShadowVisible: false,
+        contentStyle: { backgroundColor: t.colors.bg },
+      }}
+    >
+      <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
+      <Stack.Screen name="product/[id]" options={{ title: "", headerBackTitle: "Back", presentation: "card" }} />
+    </Stack>
+  );
+}
 
 export default function RootLayout() {
   return (
-    <SessionProvider>
-      <StatusBar style="auto" />
-      <Stack screenOptions={{ headerStyle: { backgroundColor: "#0f766e" }, headerTintColor: "#fff" }}>
-        <Stack.Screen name="index" options={{ title: "SmartCart" }} />
-      </Stack>
-    </SessionProvider>
+    <GestureHandlerRootView style={{ flex: 1 }}>
+      <SafeAreaProvider>
+        <ThemeProvider>
+          <SessionProvider>
+            <StatusBar style="auto" />
+            <Navigator />
+          </SessionProvider>
+        </ThemeProvider>
+      </SafeAreaProvider>
+    </GestureHandlerRootView>
   );
 }

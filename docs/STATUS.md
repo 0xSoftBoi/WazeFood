@@ -33,7 +33,7 @@ IT_DURABLE=1 npm run test:it
 | **Ops** | `/health`, `/ready`, `/metrics` (events, perception cost, abuse stats), `/admin/outbox` |
 | **HTTP edge** | Hardened router: body-size cap → 413, request/header/keep-alive timeouts (slowloris defense), gzip negotiation, graceful connection-draining shutdown (`platform/http/router.ts`) |
 | **Delivery** | Dockerfile, CI (unit + smoke + live-DB integration job), web demo, OpenAPI spec (+ CORS for the web app), SQL migrations |
-| **Mobile app** | `mobile/` — one **Expo** (React Native + Expo Router) codebase for **web + iOS + Android**, talking to the backend via a **typed client generated from the OpenAPI spec** (`npm run gen:api`). First vertical slice live: anonymous session → product search → best nearby price (web bundle builds, app typechecks, flow verified against the running API) |
+| **Mobile app** | `mobile/` — one **Expo** (React Native + Expo Router) codebase for **web + iOS + Android**, with an iOS-grade **design system** (`src/ui`: theme tokens light/dark + primitives) and a **typed client generated from the OpenAPI spec** (`npm run gen:api`). Full anonymous-first MVP: **Home** (search + nearby deals), **Product** (best price + add-to-list + watch), **List** (priced items + cart total + trip optimization), **Scan** (`expo-camera` barcode → price), **You** (karma/rank/badges/leaderboard). App typechecks, web bundle compiles, all flows verified against the running API |
 | **Research** | 4 cited memos: price-data sourcing & competition, receipt OCR & matching, real-time/geospatial, market & unit economics |
 
 ## Deferred (by design — earn the right via the scaling-playbook triggers) ⏳
@@ -44,7 +44,7 @@ IT_DURABLE=1 npm run test:it
 - **Service extraction** (Ingestion → Optimization → Alerts → Pricing) — only when load triggers fire.
 - **Edge bot-management** (Cloudflare/Fastly JA4/WAF/DDoS) + **mobile attestation** (Play Integrity, App Attest, Private Access Tokens) — *buy/adopt at deployment*; the domain-specific scoring layer + durable forensic ledger are already built (`docs/research/anti-scraping.md`).
 - **Buy the IdP** (Firebase/Stytch) for hosted social + passkeys if/when desired — note real Apple/Google id_token JWKS verification is now built in-house (`platform/auth/oidc.ts`), so the IdP is optional rather than required. SMS provider for referral anti-fraud.
-- **The rest of the mobile app** — the Expo app + first vertical slice (search → best price) are built; remaining: session persistence (AsyncStorage/SecureStore), list / scan (`expo-camera`) / map screens, social-login upgrade (`/auth/link`), and native **AR/glasses clients** (ARKit/ARCore, Meta/Snap SDKs).
+- **Mobile app polish for store submission** — the Expo app ships the full MVP loop (home/product/list/scan/profile) with session persistence and a design system; remaining: social-login upgrade (`/auth/link`), real geolocation (`expo-location`) + map screen, receipt-photo capture into ingestion, app icon/splash artwork, and native **AR/glasses clients** (ARKit/ARCore, Meta/Snap SDKs).
 - **ML in-house** (self-hosted OCR/VLM/embeddings) — managed APIs first, per the OCR memo's trigger.
 
 ## Health snapshot
