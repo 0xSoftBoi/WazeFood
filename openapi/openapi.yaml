@@ -5,7 +5,8 @@ info:
   description: >
     Backend-for-frontend over the SmartCart modular monolith. Endpoints are coarse and
     screen-shaped. All requests carry an `x-device-id`; authenticated requests add
-    `Authorization: Bearer user:<id>`. See docs/ARCHITECTURE.md.
+    `Authorization: Bearer <accessToken>` (a short-lived JWT from /auth/anonymous or /auth/link).
+    See docs/ARCHITECTURE.md.
 servers:
   - url: http://localhost:3000
 components:
@@ -16,13 +17,41 @@ components:
       required: true
       schema: { type: string }
   schemas:
+    Tokens:
+      type: object
+      required: [accessToken, refreshToken, expiresInSec, userId]
+      properties:
+        accessToken: { type: string }
+        refreshToken: { type: string }
+        expiresInSec: { type: integer }
+        userId: { type: string }
+    Product:
+      type: object
+      required: [id, name, category, isStoreBrand]
+      properties:
+        id: { type: string }
+        name: { type: string }
+        brand: { type: string, nullable: true }
+        sizeValue: { type: number, nullable: true }
+        sizeUnit: { type: string, nullable: true }
+        category: { type: string }
+        isStoreBrand: { type: boolean }
+        upc: { type: string, nullable: true }
+    SearchResults:
+      type: object
+      required: [query, results]
+      properties:
+        query: { type: string }
+        results: { type: array, items: { $ref: "#/components/schemas/Product" } }
     BestPrice:
       type: object
+      required: [found]
       properties:
         found: { type: boolean }
         productId: { type: string }
         storeId: { type: string }
         price: { type: number }
+        unitOk: { type: boolean }
         confidence: { type: number }
         asOf: { type: string, format: date-time }
         distanceMeters: { type: number }
@@ -83,11 +112,28 @@ paths:
       summary: Price-drop / deal notifications
       parameters: [{ name: id, in: path, required: true, schema: { type: string } }]
       responses: { "200": { description: ok } }
+  /auth/anonymous:
+    post:
+      summary: Start an anonymous session (anonymous-first) — returns access + refresh tokens
+      parameters: [{ $ref: "#/components/parameters/DeviceId" }]
+      requestBody:
+        content: { application/json: { schema: { type: object, properties: { metro: { type: string } } } } }
+      responses:
+        "201": { description: created, content: { application/json: { schema: { $ref: "#/components/schemas/Tokens" } } } }
+  /auth/refresh:
+    post:
+      summary: Rotate tokens (rotating refresh + reuse detection)
+      requestBody:
+        content: { application/json: { schema: { type: object, required: [refreshToken], properties: { refreshToken: { type: string } } } } }
+      responses:
+        "200": { description: ok, content: { application/json: { schema: { $ref: "#/components/schemas/Tokens" } } } }
+        "401": { description: invalid / expired / reuse detected }
   /search:
     get:
       summary: Product search (records referral activation signal when authenticated)
       parameters: [{ name: q, in: query, schema: { type: string } }]
-      responses: { "200": { description: ok } }
+      responses:
+        "200": { description: ok, content: { application/json: { schema: { $ref: "#/components/schemas/SearchResults" } } } }
   /catalog/resolve:
     get:
       summary: Resolve a barcode or cryptic line-item text to a canonical product (entity resolution)

@@ -1,0 +1,29 @@
+{
+  "expo": {
+    "name": "SmartCart",
+    "slug": "smartcart",
+    "version": "0.1.0",
+    "scheme": "smartcart",
+    "orientation": "portrait",
+    "userInterfaceStyle": "automatic",
+    "newArchEnabled": true,
+    "ios": {
+      "supportsTablet": true,
+      "bundleIdentifier": "com.smartcart.app"
+    },
+    "android": {
+      "package": "com.smartcart.app"
+    },
+    "web": {
+      "bundler": "metro",
+      "output": "single"
+    },
+    "plugins": [
+      "expo-router",
+      "expo-asset"
+    ],
+    "experiments": {
+      "typedRoutes": true
+    }
+  }
+}

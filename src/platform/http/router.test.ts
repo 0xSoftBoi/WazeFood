@@ -5,12 +5,13 @@ import { test, before, after } from "node:test";
 import assert from "node:assert/strict";
 import type { AddressInfo } from "node:net";
 import { Router } from "./router.ts";
+import { cors } from "./middleware.ts";
 
 let base = "";
 let server: ReturnType<Router["listen"]>;
 
 before(async () => {
-  const router = new Router({ maxBodyBytes: 1024, gzip: true });
+  const router = new Router({ maxBodyBytes: 1024, gzip: true }).use(cors("*"));
   router.post("/echo", (ctx) => ({ status: 200, body: { got: ctx.body } }));
   router.get("/big", () => ({ status: 200, body: { blob: "x".repeat(5000) } }));
   router.get("/hello", () => ({ status: 200, body: { hi: true } }));
@@ -53,4 +54,13 @@ test("small responses are not gzipped", async () => {
   const res = await fetch(`${base}/hello`, { headers: { "accept-encoding": "gzip" } });
   assert.equal(res.headers.get("content-encoding"), null);
   assert.deepEqual(await res.json(), { hi: true });
+});
+
+test("CORS: preflight is answered and normal responses carry allow-origin (web build)", async () => {
+  const pre = await fetch(`${base}/echo`, { method: "OPTIONS" });
+  assert.equal(pre.status, 204);
+  assert.equal(pre.headers.get("access-control-allow-origin"), "*");
+  assert.ok((pre.headers.get("access-control-allow-headers") ?? "").includes("authorization"));
+  const res = await fetch(`${base}/hello`);
+  assert.equal(res.headers.get("access-control-allow-origin"), "*");
 });

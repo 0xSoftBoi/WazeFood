@@ -14,11 +14,13 @@
     "test:watch": "node --test --watch 'src/**/*.test.ts'",
     "typecheck": "tsc --noEmit",
     "smoke": "node scripts/smoke.ts",
-    "test:it": "node --test test/persistence.it.test.ts"
+    "test:it": "node --test test/persistence.it.test.ts",
+    "gen:api": "openapi-typescript openapi/openapi.yaml -o mobile/src/api/schema.ts"
   },
   "devDependencies": {
     "@types/node": "^22.20.0",
     "@types/pg": "^8.20.0",
+    "openapi-typescript": "^7.13.0",
     "typescript": "^5.6.0"
   },
   "dependencies": {

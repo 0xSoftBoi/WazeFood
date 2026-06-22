@@ -5,7 +5,7 @@
 import { bootstrap } from "./bootstrap.ts";
 import { type Config, loadConfig } from "./config.ts";
 import { Router } from "./platform/http/router.ts";
-import { identity, rateLimit, abuseGuard } from "./platform/http/middleware.ts";
+import { identity, rateLimit, abuseGuard, cors } from "./platform/http/middleware.ts";
 import { registerRoutes } from "./routes.ts";
 import { seedDemo } from "./seed.ts";
 import { Relay, consoleSink, httpSink, type Sink } from "./modules/outbox/relay.ts";
@@ -37,6 +37,7 @@ async function main(): Promise<void> {
   await durable.flush();
 
   const router = new Router({ maxBodyBytes: config.maxBodyBytes, requestTimeoutMs: config.requestTimeoutMs })
+    .use(cors(config.corsOrigin)) // outermost: preflight + allow-headers for the web app build
     .use(identity((token) => app.auth.verifyAccess(token))) // verify access JWT (anonymous-ok)
     .use(rateLimit(app.cache, config.rateLimitPerMin)) // coarse first gate
     .use(abuseGuard(app.abuse)); // domain-specific anti-scraping score → decision
