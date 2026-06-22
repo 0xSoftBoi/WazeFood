@@ -20,6 +20,7 @@ export class PgPersistor implements Persistor {
   }
 
   async init(): Promise<void> {
+    if (this.pool !== undefined) return; // idempotent: hydrate() and early repo wiring both call init()
     const { Pool } = await import("pg");
     this.pool = new Pool({ connectionString: this.url, max: 4 });
     await this.pool.query(`
@@ -31,6 +32,12 @@ export class PgPersistor implements Persistor {
         PRIMARY KEY (table_name, id)
       );
     `);
+  }
+
+  // The connection pool, for dedicated relational repositories (pg-repositories.ts). Available
+  // after init().
+  getPool(): import("pg").Pool {
+    return this.must();
   }
 
   async loadAll(table: string): Promise<Row[]> {

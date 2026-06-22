@@ -45,6 +45,7 @@ export type SubmitInput = {
   barcode?: string | null;
   text?: string | null;       // OCR'd / typed line item, e.g. "GV WHP MILK"
   mediaHash?: string | null;  // photo identity, for cheap→expensive routing + dedup
+  image?: { base64?: string; url?: string; mediaType?: string } | null; // the photo to read (real OCR/VLM)
   lat: number;
   lng: number;
 };
@@ -66,10 +67,13 @@ export type PriorPricePort = {
 };
 export type LocationPort = { setAisle: (storeId: string, productId: string, section: string) => void };
 export type MatchingPort = {
-  resolve: (input: { barcode?: string | null; text?: string | null }) => { productId: string | null; matchScore: number; method: "barcode" | "text" | "none" };
+  resolve: (input: { barcode?: string | null; text?: string | null }) => Promise<{ productId: string | null; matchScore: number; method: "barcode" | "text" | "none" }>;
 };
 export type PerceptionPort = {
-  perceive: (input: { barcode?: string | null; text?: string | null; mediaHash?: string | null; reportedPrice?: number | null }) => { extractionConfidence: number; price: number | null; routes: string[] };
+  perceive: (input: {
+    barcode?: string | null; text?: string | null; mediaHash?: string | null; reportedPrice?: number | null;
+    image?: { base64?: string; url?: string; mediaType?: string } | null;
+  }) => Promise<{ extractionConfidence: number; price: number | null; routes: string[] }>;
 };
 
 const GEOFENCE_RADIUS_M = 200; // "was the user actually at the store?"
@@ -129,10 +133,11 @@ export class IngestionService {
     const geofenceValid = distanceMeters(at, { lat: store.lat, lng: store.lng }) <= GEOFENCE_RADIUS_M;
 
     // 2a) Perception routing (barcode/client free; cheap OCR else; escalate only if low-conf).
-    const percept = this.deps.perception.perceive({
+    const percept = await this.deps.perception.perceive({
       barcode: input.barcode,
       text: input.text,
       mediaHash: input.mediaHash,
+      image: input.image,
       reportedPrice: input.reportedPrice,
     });
 
@@ -142,7 +147,7 @@ export class IngestionService {
     let matchMethod: Contribution["matchMethod"] = input.productId != null ? "explicit" : "none";
     let matchScore = input.productId != null ? 1 : 0;
     if (productId === null && (input.barcode != null || input.text != null)) {
-      const m = this.deps.matching.resolve({ barcode: input.barcode, text: input.text });
+      const m = await this.deps.matching.resolve({ barcode: input.barcode, text: input.text });
       productId = m.productId;
       matchMethod = m.method;
       matchScore = m.matchScore;

@@ -72,6 +72,13 @@ export function registerRoutes(router: Router, app: App): Router {
     return ok({ count: app.outbox.count(), recent: app.outbox.recent(Number.isFinite(limit) ? limit : 50) });
   });
 
+  // Anti-scraping forensics: the durable flag ledger + worst repeat offenders.
+  router.get("/admin/abuse", (ctx) => {
+    const limit = Number(ctx.query.get("limit") ?? "50");
+    const n = Number.isFinite(limit) ? limit : 50;
+    return ok({ metrics: app.abuse.metrics(), recentFlags: app.abuse.recentFlags(n), topOffenders: app.abuse.topOffenders(20) });
+  });
+
   // --- Auth (anonymous-first; IdP-backed social login verified server-side) ---
   // Start a guest session — no signup, data accrues to this user (the smooth onboarding path).
   router.post("/auth/anonymous", (ctx) => {
@@ -80,9 +87,9 @@ export function registerRoutes(router: Router, app: App): Router {
   });
 
   // Upgrade a guest by signing in with a provider (Apple/Google/email) — same userId is kept.
-  router.post("/auth/link", (ctx) => {
+  router.post("/auth/link", async (ctx) => {
     const b = asBody(ctx.body);
-    const r = app.auth.link({ userId: str(b, "userId"), provider: str(b, "provider"), token: str(b, "token"), deviceId: ctx.deviceId });
+    const r = await app.auth.link({ userId: str(b, "userId"), provider: str(b, "provider"), token: str(b, "token"), deviceId: ctx.deviceId });
     return r.ok ? ok({ ...r.tokens, upgraded: r.upgraded, signedInToExisting: r.signedInToExisting }) : ok({ error: r.error }, 401);
   });
 
@@ -137,11 +144,11 @@ export function registerRoutes(router: Router, app: App): Router {
   });
 
   // Resolve a barcode or a line-item string to a canonical product (client-side scan helper).
-  router.get("/catalog/resolve", (ctx) => {
+  router.get("/catalog/resolve", async (ctx) => {
     const barcode = ctx.query.get("barcode");
     const text = ctx.query.get("text");
     if (barcode === null && text === null) throw badRequest("barcode or text required");
-    return ok(app.matching.resolve({ barcode, text }));
+    return ok(await app.matching.resolve({ barcode, text }));
   });
 
   router.get("/prices/best", (ctx) => {
@@ -189,6 +196,7 @@ export function registerRoutes(router: Router, app: App): Router {
       barcode: optStr(b, "barcode") ?? null,
       text: optStr(b, "text") ?? null,
       mediaHash: optStr(b, "mediaHash") ?? null,
+      image: (b.image as { base64?: string; url?: string; mediaType?: string } | undefined) ?? null,
       lat: num(b, "lat"),
       lng: num(b, "lng"),
     });
@@ -295,6 +303,7 @@ export function registerRoutes(router: Router, app: App): Router {
       barcode: optStr(b, "barcode") ?? null,
       text: optStr(b, "text") ?? null,
       mediaHash: optStr(b, "mediaHash") ?? null,
+      image: (b.image as { base64?: string; url?: string; mediaType?: string } | undefined) ?? null,
       lat: num(b, "lat"),
       lng: num(b, "lng"),
     });
