@@ -6,9 +6,10 @@ import { Platform } from "react-native";
 export const API_BASE_URL =
   process.env.EXPO_PUBLIC_API_URL ?? (Platform.OS === "android" ? "http://10.0.2.2:3000" : "http://localhost:3000");
 
-// The seeded demo metro (Salt Lake City) — used as the "current location" for best-price lookups
-// until we wire real geolocation.
-export const DEMO_LOCATION = { lat: 40.7608, lng: -111.891 };
+// The launch metro's center (NYC — Union Square) — the fallback "current location" for best-price
+// lookups when device geolocation is denied/unavailable. Matches the backend's SEED_CITY=nyc seed.
+export const DEMO_LOCATION = { lat: 40.7359, lng: -73.9911 };
+export const DEMO_METRO = "nyc";
 
 // Social sign-in feature flag. The buttons only appear when the corresponding OAuth client IDs are
 // configured via EXPO_PUBLIC_* env vars (inlined at build time) — so the UI ships dark until you

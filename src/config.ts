@@ -32,6 +32,7 @@ export type Config = {
   requestTimeoutMs: number;
   cacheRefreshMs: number; // Redis L1-mirror coherence poll (0 disables); makes reads see other nodes' writes
   corsOrigin: string; // Allow-Origin for the web app build ("*" in dev; set a concrete origin in prod)
+  seedCity: string; // launch metro to seed on first boot ("nyc" | "sea"); see src/seed-cities.ts
 };
 
 function int(value: string | undefined, fallback: number): number {
@@ -82,5 +83,6 @@ export function loadConfig(env: NodeJS.ProcessEnv = process.env): Config {
     requestTimeoutMs: int(env.REQUEST_TIMEOUT_MS, 30_000),
     cacheRefreshMs: int(env.CACHE_REFRESH_MS, 1_000),
     corsOrigin: env.CORS_ORIGIN ?? "*",
+    seedCity: env.SEED_CITY ?? "nyc",
   };
 }

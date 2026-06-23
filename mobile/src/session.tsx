@@ -7,7 +7,7 @@ import React, { createContext, useCallback, useContext, useEffect, useMemo, useR
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import * as Location from "expo-location";
 import { ApiClient, type Tokens } from "./api/client";
-import { API_BASE_URL, DEMO_LOCATION } from "./config";
+import { API_BASE_URL, DEMO_LOCATION, DEMO_METRO } from "./config";
 
 const KEYS = { device: "sc.deviceId", refresh: "sc.refreshToken", list: "sc.listId" };
 
@@ -42,7 +42,7 @@ const SessionContext = createContext<SessionValue | null>(null);
 export function SessionProvider({ children }: { children: React.ReactNode }) {
   const [state, setState] = useState<SessionState>({ userId: null, ready: false, error: null });
   const [auth, setAuth] = useState<AuthState>({ signedIn: false, provider: null });
-  const [location, setLocation] = useState<AppLocation>({ ...DEMO_LOCATION, metro: "slc", source: "demo" });
+  const [location, setLocation] = useState<AppLocation>({ ...DEMO_LOCATION, metro: DEMO_METRO, source: "demo" });
   const tokenRef = useRef<string | null>(null);
   const deviceIdRef = useRef<string>("pending");
   const listIdRef = useRef<string | null>(null);
@@ -57,7 +57,7 @@ export function SessionProvider({ children }: { children: React.ReactNode }) {
     (async () => {
       try {
         deviceIdRef.current = await getOrCreateDeviceId();
-        const tokens: Tokens = await api.startAnonymousSession("slc");
+        const tokens: Tokens = await api.startAnonymousSession(DEMO_METRO);
         if (cancelled) return;
         tokenRef.current = tokens.accessToken;
         await AsyncStorage.setItem(KEYS.refresh, tokens.refreshToken);
