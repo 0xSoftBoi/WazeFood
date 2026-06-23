@@ -41,6 +41,11 @@ const PRODUCTS: ProductSeed[] = [
   { id: "prd_pb", name: "Peanut Butter 16oz", brand: "Nutty", sizeValue: 16, sizeUnit: "oz", category: "pantry", isStoreBrand: false, upc: "100016", base: 3.99 },
   { id: "prd_oliveoil", name: "Olive Oil 17oz", brand: "Grove", sizeValue: 17, sizeUnit: "oz", category: "pantry", isStoreBrand: false, upc: "100017", base: 9.99 },
   { id: "prd_paper", name: "Paper Towels 6 rolls", brand: "Plush", sizeValue: 6, sizeUnit: "ct", category: "household", isStoreBrand: false, upc: "100018", base: 9.49 },
+  // A few recognizable national brands (real UPCs) so search/scan demos resolve.
+  { id: "prd_gatorade", name: "Gatorade Lemon-Lime 28oz", brand: "Gatorade", sizeValue: 28, sizeUnit: "oz", category: "beverage", isStoreBrand: false, upc: "052000338393", base: 1.99 },
+  { id: "prd_coke", name: "Coca-Cola 12 pack 12oz cans", brand: "Coca-Cola", sizeValue: 12, sizeUnit: "ct", category: "beverage", isStoreBrand: false, upc: "049000028904", base: 8.49 },
+  { id: "prd_doritos", name: "Doritos Nacho Cheese 9.25oz", brand: "Doritos", sizeValue: 9.25, sizeUnit: "oz", category: "snack", isStoreBrand: false, upc: "028400647465", base: 5.49 },
+  { id: "prd_lays", name: "Lay's Classic Potato Chips 8oz", brand: "Lay's", sizeValue: 8, sizeUnit: "oz", category: "snack", isStoreBrand: false, upc: "028400090728", base: 4.99 },
 ];
 
 const CITIES: Record<CityKey, { metro: string; label: string; center: { lat: number; lng: number }; stores: StoreSeed[] }> = {
