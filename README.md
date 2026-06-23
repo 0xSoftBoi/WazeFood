@@ -6,7 +6,7 @@
 
 This repository holds the **scalable architecture plan** derived from the product brain dump
 **and a runnable modular-monolith backend scaffold that implements it**. It is designed to be
-**pragmatic at MVP scale** (first 50 users + Atozy soft launch) while keeping **clean seams to
+**pragmatic at MVP scale** (first 50 users + soft launch) while keeping **clean seams to
 scale to millions of shoppers across many metros** without a rewrite.
 
 ## Run the scaffold
