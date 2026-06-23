@@ -17,12 +17,13 @@
       "supportsTablet": true,
       "bundleIdentifier": "com.smartcart.app",
       "infoPlist": {
-        "NSCameraUsageDescription": "SmartCart uses the camera to scan grocery barcodes and look up the best nearby price."
+        "NSCameraUsageDescription": "SmartCart uses the camera to scan grocery barcodes and look up the best nearby price.",
+        "NSLocationWhenInUseUsageDescription": "SmartCart uses your location to find the best grocery prices at stores near you."
       }
     },
     "android": {
       "package": "com.smartcart.app",
-      "permissions": ["android.permission.CAMERA"]
+      "permissions": ["android.permission.CAMERA", "android.permission.ACCESS_FINE_LOCATION", "android.permission.ACCESS_COARSE_LOCATION"]
     },
     "web": {
       "bundler": "metro",

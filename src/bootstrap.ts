@@ -49,11 +49,17 @@ export async function bootstrap(config: Config = loadConfig(), clock: Clock = sy
 
     // Dedicated relational repositories (pgvector / PostGIS / Timescale). Init the pool early and
     // apply the relational migration so the extension-backed tables exist before the app uses them.
+    // Degrade gracefully: if the extensions aren't installed on this Postgres, fall back to the
+    // in-memory repositories so the core (doc-store) durability path still works.
     await persistor.init();
-    await applyRelationalSchema(persistor.getPool());
-    const { PgVectorIndex, PgGeoStoreIndex, PgPriceHistory } = await import("./platform/store/pg-repositories.ts");
-    const pool = persistor.getPool();
-    repositories = { vectors: new PgVectorIndex(pool), geo: new PgGeoStoreIndex(pool), history: new PgPriceHistory(pool) };
+    try {
+      await applyRelationalSchema(persistor.getPool());
+      const { PgVectorIndex, PgGeoStoreIndex, PgPriceHistory } = await import("./platform/store/pg-repositories.ts");
+      const pool = persistor.getPool();
+      repositories = { vectors: new PgVectorIndex(pool), geo: new PgGeoStoreIndex(pool), history: new PgPriceHistory(pool) };
+    } catch (e) {
+      console.warn(`[bootstrap] relational repositories unavailable (missing pgvector/PostGIS/Timescale?) — using in-memory: ${(e as Error).message}`);
+    }
   }
 
   if (config.cacheDriver === "redis") {

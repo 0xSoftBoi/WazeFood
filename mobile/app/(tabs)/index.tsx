@@ -48,7 +48,10 @@ export default function HomeScreen() {
   return (
     <Screen grouped refreshing={refreshing} onRefresh={async () => { setRefreshing(true); await loadDeals(); setRefreshing(false); }}>
       <View style={{ paddingTop: t.spacing.sm, paddingBottom: t.spacing.base }}>
-        <Text variant="footnote" tone="secondary">Salt Lake City</Text>
+        <View style={{ flexDirection: "row", alignItems: "center", gap: 4 }}>
+          <Ionicons name="location" size={13} color={t.colors.textSecondary} />
+          <Text variant="footnote" tone="secondary">{location.source === "device" ? "Near you" : "Salt Lake City · demo"}</Text>
+        </View>
         <Text variant="largeTitle">Stop overpaying.</Text>
       </View>
 

@@ -1,9 +1,11 @@
 // App session. On launch we restore (or start) an anonymous-first guest session and hold its access
 // token; tokens persist via AsyncStorage so a reload keeps the same guest (and their list/karma).
-// Also owns the user's location (demo metro for now) and the "current list" handle.
+// Also resolves the user's real location (expo-location, falling back to the demo metro) and owns
+// the "current list" handle. "Nearby" queries across the app read location from here.
 
 import React, { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState } from "react";
 import AsyncStorage from "@react-native-async-storage/async-storage";
+import * as Location from "expo-location";
 import { ApiClient, type Tokens } from "./api/client";
 import { API_BASE_URL, DEMO_LOCATION } from "./config";
 
@@ -17,12 +19,15 @@ async function getOrCreateDeviceId(): Promise<string> {
   return id;
 }
 
+export type LocationSource = "demo" | "device";
+export type AppLocation = { lat: number; lng: number; metro: string; source: LocationSource };
+
 type SessionState = { userId: string | null; ready: boolean; error: string | null };
 
 type SessionValue = {
   api: ApiClient;
   userId: string | null;
-  location: { lat: number; lng: number; metro: string };
+  location: AppLocation;
   ready: boolean;
   error: string | null;
   ensureList: () => Promise<string>;
@@ -32,10 +37,10 @@ const SessionContext = createContext<SessionValue | null>(null);
 
 export function SessionProvider({ children }: { children: React.ReactNode }) {
   const [state, setState] = useState<SessionState>({ userId: null, ready: false, error: null });
+  const [location, setLocation] = useState<AppLocation>({ ...DEMO_LOCATION, metro: "slc", source: "demo" });
   const tokenRef = useRef<string | null>(null);
   const deviceIdRef = useRef<string>("pending");
   const listIdRef = useRef<string | null>(null);
-  const location = useMemo(() => ({ ...DEMO_LOCATION, metro: "slc" }), []);
 
   const api = useMemo(
     () => new ApiClient({ baseUrl: API_BASE_URL, deviceId: deviceIdRef.current, getToken: () => tokenRef.current }),
@@ -47,7 +52,7 @@ export function SessionProvider({ children }: { children: React.ReactNode }) {
     (async () => {
       try {
         deviceIdRef.current = await getOrCreateDeviceId();
-        const tokens: Tokens = await api.startAnonymousSession(location.metro);
+        const tokens: Tokens = await api.startAnonymousSession("slc");
         if (cancelled) return;
         tokenRef.current = tokens.accessToken;
         await AsyncStorage.setItem(KEYS.refresh, tokens.refreshToken);
@@ -58,7 +63,24 @@ export function SessionProvider({ children }: { children: React.ReactNode }) {
       }
     })();
     return () => { cancelled = true; };
-  }, [api, location.metro]);
+  }, [api]);
+
+  // Resolve the real device location in the background; keep the demo metro if denied/unavailable.
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      try {
+        const { status } = await Location.requestForegroundPermissionsAsync();
+        if (status !== "granted") return;
+        const pos = await Location.getCurrentPositionAsync({ accuracy: Location.Accuracy.Balanced });
+        if (cancelled) return;
+        setLocation((prev) => ({ ...prev, lat: pos.coords.latitude, lng: pos.coords.longitude, source: "device" }));
+      } catch {
+        /* keep the demo location */
+      }
+    })();
+    return () => { cancelled = true; };
+  }, []);
 
   const ensureList = useCallback(async (): Promise<string> => {
     if (listIdRef.current != null) return listIdRef.current;
