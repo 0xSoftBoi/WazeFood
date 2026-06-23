@@ -69,6 +69,10 @@ export class ApiClient {
   resolve(input: { barcode?: string; text?: string }) {
     return this.request<{ productId: string | null; matchScore: number; method: "barcode" | "text" | "none" }>("GET", "/catalog/resolve", { query: input });
   }
+  // Identify a product from a photo (Gemini Vision) and resolve it to the catalog.
+  identifyPhoto(image: { base64?: string; url?: string; mediaType?: string }) {
+    return this.request<{ text: string | null; price: number | null; confidence: number; product: Product | null }>("POST", "/vision/identify", { body: { image } });
+  }
   bestPrice(productId: string, lat: number, lng: number, radius?: number) {
     return this.request<BestPrice>("GET", "/prices/best", { query: { productId, lat, lng, radius } });
   }

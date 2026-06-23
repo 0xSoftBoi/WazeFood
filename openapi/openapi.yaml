@@ -293,6 +293,24 @@ paths:
         - { name: radius, in: query, schema: { type: number } }
       responses:
         "200": { description: ok, content: { application/json: { schema: { $ref: "#/components/schemas/StoresNear" } } } }
+  /vision/identify:
+    post:
+      summary: Identify a product from a photo (Gemini Vision) and resolve it to the catalog
+      requestBody:
+        content: { application/json: { schema: { type: object, required: [image], properties: { image: { type: object, properties: { base64: { type: string }, url: { type: string }, mediaType: { type: string } } } } } } }
+      responses:
+        "200":
+          description: ok
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [text, price, confidence, product]
+                properties:
+                  text: { type: string, nullable: true }
+                  price: { type: number, nullable: true }
+                  confidence: { type: number }
+                  product: { allOf: [{ $ref: "#/components/schemas/Product" }], nullable: true }
   /deals/near:
     get:
       summary: Deals and clearances reported nearby (H3 kRing feed)

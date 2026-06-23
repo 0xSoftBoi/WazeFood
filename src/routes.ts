@@ -223,6 +223,23 @@ export function registerRoutes(router: Router, app: App): Router {
     return ok(item, 201);
   });
 
+  // Identify a product from a photo (Gemini Vision) → resolve to the catalog. Powers "snap to look up".
+  router.post("/vision/identify", async (ctx) => {
+    const b = asBody(ctx.body);
+    const image = b.image as { base64?: string; url?: string; mediaType?: string } | undefined;
+    if (image?.base64 == null && image?.url == null) throw badRequest("image required");
+    const seen = await app.perception.identify({ image });
+    // Resolve the read text to a real catalog product via the fuzzy embedding matcher.
+    const match = seen.text != null ? await app.matching.resolve({ text: seen.text }) : { productId: null };
+    const product = match.productId != null ? app.catalog.getProduct(match.productId) : undefined;
+    return ok({
+      text: seen.text,
+      price: seen.price,
+      confidence: seen.confidence,
+      product: product === undefined ? null : { id: product.id, name: product.name, brand: product.brand, category: product.category, imageUrl: product.imageUrl },
+    });
+  });
+
   // --- Ingestion (the write path) ---
   router.post("/contributions", async (ctx) => {
     const b = asBody(ctx.body);
