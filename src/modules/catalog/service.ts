@@ -16,6 +16,7 @@ export type Product = {
   category: string;
   isStoreBrand: boolean;
   upc: string | null;
+  imageUrl: string | null;
 };
 
 export type Store = {
@@ -56,8 +57,8 @@ export class CatalogService {
     this.aisles = deps.tables<Aisle>("aisles");
   }
 
-  seedProduct(p: Omit<Product, "id"> & { id?: string }): Product {
-    return this.products.upsert({ ...p, id: p.id ?? newId("prd") });
+  seedProduct(p: Omit<Product, "id" | "imageUrl"> & { id?: string; imageUrl?: string | null }): Product {
+    return this.products.upsert({ imageUrl: null, ...p, id: p.id ?? newId("prd") });
   }
 
   seedStore(s: Omit<Store, "id" | "cell"> & { id?: string }): Store {
@@ -106,8 +107,8 @@ export class CatalogService {
     return this.products.find((p) => p.category !== "_canary" && p.name.toLowerCase().includes(q));
   }
 
-  async createUserProduct(input: Omit<Product, "id">): Promise<Product> {
-    const product = this.products.insert({ ...input, id: newId("prd") });
+  async createUserProduct(input: Omit<Product, "id" | "imageUrl"> & { imageUrl?: string | null }): Promise<Product> {
+    const product = this.products.insert({ imageUrl: null, ...input, id: newId("prd") });
     await this.deps.bus.publish({ type: "product.created", productId: product.id, source: "user" });
     return product;
   }

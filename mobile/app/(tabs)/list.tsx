@@ -3,6 +3,7 @@ import { View } from "react-native";
 import { useFocusEffect, useRouter } from "expo-router";
 import { Ionicons } from "@expo/vector-icons";
 import { Badge, Button, Card, EmptyState, PriceTag, Screen, Skeleton, Text, useTheme } from "../../src/ui";
+import { ProductImage } from "../../src/components/ProductImage";
 import { useSession } from "../../src/session";
 import { prettyStore } from "../../src/lib/format";
 import type { CartPlan, PricedList } from "../../src/api/client";
@@ -68,6 +69,7 @@ export default function ListScreen() {
           {list.items.map((item) => (
             <Card key={item.id} elevation="sm" style={{ marginBottom: t.spacing.sm }}>
               <View style={{ flexDirection: "row", alignItems: "center", gap: t.spacing.md }}>
+                <ProductImage uri={item.imageUrl} category={item.category} size={46} />
                 <View style={{ flex: 1 }}>
                   <Text variant="headline" numberOfLines={1}>{item.name}</Text>
                   <Text variant="footnote" tone="secondary">

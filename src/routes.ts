@@ -202,6 +202,8 @@ export function registerRoutes(router: Router, app: App): Router {
         qty: it.qty,
         name: product?.name ?? it.productId,
         brand: product?.brand ?? null,
+        imageUrl: product?.imageUrl ?? null,
+        category: product?.category ?? null,
         best: best === undefined ? null : { price: best.price, storeId: best.storeId, confidence: best.confidence, distanceMeters: best.distanceMeters },
         lineTotal: best === undefined ? null : Math.round(best.price * it.qty * 100) / 100,
       };

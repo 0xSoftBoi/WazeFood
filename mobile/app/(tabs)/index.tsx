@@ -101,7 +101,7 @@ export default function HomeScreen() {
         <EmptyState icon="search-outline" title={`No matches for "${query}"`} subtitle="Try a simpler term like milk or eggs." />
       ) : (
         results.map((p) => (
-          <ProductRow key={p.id} product={p} onPress={() => router.push({ pathname: "/product/[id]", params: { id: p.id, name: p.name, brand: p.brand ?? "" } })} />
+          <ProductRow key={p.id} product={p} onPress={() => router.push({ pathname: "/product/[id]", params: { id: p.id, name: p.name, brand: p.brand ?? "", image: p.imageUrl ?? "", category: p.category } })} />
         ))
       )}
     </Screen>
