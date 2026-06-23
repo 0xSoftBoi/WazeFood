@@ -112,3 +112,69 @@ export function anthropicExtractor(opts: AnthropicExtractorOptions): Extractor {
     },
   };
 }
+
+export type GeminiExtractorOptions = {
+  apiKey: string;
+  cheapModel?: string;
+  expensiveModel?: string;
+  endpoint?: string;
+  fetchImpl?: typeof fetch;
+};
+
+// Structured-output schema Gemini is forced to return (OpenAPI subset).
+const GEMINI_SCHEMA = {
+  type: "object",
+  properties: {
+    text: { type: "string", description: "the single main product: brand + name + size" },
+    price: { type: "number", description: "shelf/receipt price in dollars, or 0 if no price is visible" },
+    confidence: { type: "number", description: "0..1 confidence in the reading" },
+  },
+  required: ["text", "price", "confidence"],
+};
+
+const GEMINI_PROMPT =
+  "This is a photo from a grocery store — a product, a shelf price tag, or a receipt. Identify the " +
+  "single main product (brand + name + size) as `text`. If a price is clearly visible (shelf tag or " +
+  "receipt line), set `price` to that dollar amount; otherwise set price to 0. Set `confidence` 0..1.";
+
+// Real extractor backed by the Gemini API (multimodal vision + structured JSON output). Great for
+// "snap any product / shelf tag / receipt → identify + price". cheap→flash, expensive→pro.
+export function geminiExtractor(opts: GeminiExtractorOptions): Extractor {
+  const doFetch = opts.fetchImpl ?? fetch;
+  const base = opts.endpoint ?? "https://generativelanguage.googleapis.com/v1beta/models";
+  const model = { cheap: opts.cheapModel ?? "gemini-2.5-flash", expensive: opts.expensiveModel ?? "gemini-2.5-pro" };
+
+  return {
+    extract: async (capture, tier) => {
+      const parts: Array<Record<string, unknown>> = [{ text: GEMINI_PROMPT }];
+      if (capture.image?.base64 != null) {
+        parts.push({ inline_data: { mime_type: capture.image.mediaType ?? "image/jpeg", data: capture.image.base64 } });
+      }
+      if (capture.text != null && capture.text.length > 0) parts.push({ text: `The shopper typed: ${capture.text}` });
+      if (parts.length === 1) {
+        // No image and no text — nothing to perceive.
+        return { price: capture.reportedPrice ?? null, text: capture.text ?? null, confidence: 0 };
+      }
+
+      const url = `${base}/${model[tier]}:generateContent?key=${encodeURIComponent(opts.apiKey)}`;
+      const requestBody = JSON.stringify({
+        contents: [{ parts }],
+        generationConfig: { response_mime_type: "application/json", response_schema: GEMINI_SCHEMA, temperature: 0 },
+      });
+      // The model is occasionally "high demand" (503) — retry with backoff so a single spike doesn't
+      // fail the request. 429 (quota) is not retried.
+      let res: Awaited<ReturnType<typeof doFetch>> | undefined;
+      for (let attempt = 0; attempt < 4; attempt++) {
+        res = await doFetch(url, { method: "POST", headers: { "content-type": "application/json" }, body: requestBody });
+        if (res.ok || res.status !== 503) break;
+        if (attempt < 3) await new Promise((r) => setTimeout(r, 700 * (attempt + 1)));
+      }
+      if (res === undefined || !res.ok) throw new Error(`gemini perception ${tier} HTTP ${res?.status ?? "??"}`);
+      const data = (await res.json()) as { candidates?: Array<{ content?: { parts?: Array<{ text?: string }> } }> };
+      const text = (data.candidates?.[0]?.content?.parts ?? []).map((p) => p.text ?? "").join("");
+      const out = parseExtraction(text);
+      // Gemini returns price 0 when none is visible — treat that as "no price read".
+      return out.price === 0 ? { ...out, price: null } : out;
+    },
+  };
+}

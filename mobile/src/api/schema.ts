@@ -495,6 +495,57 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/vision/identify": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Identify a product from a photo (Gemini Vision) and resolve it to the catalog */
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: {
+                content: {
+                    "application/json": {
+                        image: {
+                            base64?: string;
+                            url?: string;
+                            mediaType?: string;
+                        };
+                    };
+                };
+            };
+            responses: {
+                /** @description ok */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            text: string | null;
+                            price: number | null;
+                            confidence: number;
+                            product: components["schemas"]["Product"] | null;
+                        };
+                    };
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/deals/near": {
         parameters: {
             query?: never;

@@ -34,6 +34,13 @@ export class RoutingPerception {
     this.extractor = deps.extractor ?? deterministicExtractor();
   }
 
+  // Identify a photo (product / shelf tag / receipt) → { text, price, confidence } via the VLM.
+  // Powers "snap a photo to look it up" without recording a contribution.
+  async identify(capture: PerceptionInput): Promise<{ text: string | null; price: number | null; confidence: number }> {
+    const r = await this.extractor.extract(capture, "cheap");
+    return { text: r.text, price: r.price, confidence: r.confidence };
+  }
+
   async perceive(input: PerceptionInput): Promise<PerceptionResult> {
     const routes: Route[] = [];
     let costCents = 0;

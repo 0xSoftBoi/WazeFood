@@ -23,7 +23,7 @@ import { MatchingService, normalizeText } from "./modules/matching/service.ts";
 import { hashingEmbeddings, voyageEmbeddings, type Embeddings } from "./modules/matching/embeddings.ts";
 import { memoryRepositories, type Repositories } from "./platform/store/repositories.ts";
 import { RoutingPerception } from "./modules/ingestion/perception.ts";
-import { anthropicExtractor, deterministicExtractor, type Extractor } from "./modules/ingestion/extractor.ts";
+import { anthropicExtractor, geminiExtractor, deterministicExtractor, type Extractor } from "./modules/ingestion/extractor.ts";
 import { OutboxService } from "./modules/outbox/service.ts";
 import { AbuseScoreService } from "./modules/abuse/service.ts";
 import { AuthService, devVerifier, type IdentityVerifier } from "./modules/auth/service.ts";
@@ -40,15 +40,14 @@ function buildVerifier(config: Config, clock: Clock): IdentityVerifier {
   return Object.keys(providers).length > 0 ? new OidcVerifier({ providers, clock }) : devVerifier;
 }
 
-// Real VLM perception (Anthropic Messages API: cheap Haiku tier → escalate to Opus) when an API key
-// is configured; otherwise the deterministic stub keeps the default build zero-dependency.
+// Real VLM perception when an API key is configured (Gemini Vision preferred, else Anthropic);
+// otherwise the deterministic stub keeps the default build zero-dependency.
 function buildExtractor(config: Config): Extractor {
+  if (config.geminiApiKey !== null) {
+    return geminiExtractor({ apiKey: config.geminiApiKey, cheapModel: config.perceptionCheapModel, expensiveModel: config.perceptionExpensiveModel });
+  }
   if (config.anthropicApiKey !== null) {
-    return anthropicExtractor({
-      apiKey: config.anthropicApiKey,
-      cheapModel: config.perceptionCheapModel,
-      expensiveModel: config.perceptionExpensiveModel,
-    });
+    return anthropicExtractor({ apiKey: config.anthropicApiKey, cheapModel: config.perceptionCheapModel, expensiveModel: config.perceptionExpensiveModel });
   }
   return deterministicExtractor();
 }

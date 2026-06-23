@@ -23,6 +23,7 @@ export type Config = {
   refreshTtlSec: number;
   oidcGoogleAudiences: string[]; // Google OAuth client IDs accepted as id_token `aud`
   oidcAppleAudiences: string[]; // Apple service/app IDs accepted as id_token `aud`
+  geminiApiKey: string | null; // set → real Gemini Vision perception (preferred); else anthropic/stub
   anthropicApiKey: string | null; // set → real VLM perception (OCR/extraction); else deterministic stub
   perceptionCheapModel: string;
   perceptionExpensiveModel: string;
@@ -74,9 +75,10 @@ export function loadConfig(env: NodeJS.ProcessEnv = process.env): Config {
     refreshTtlSec: int(env.REFRESH_TTL_SEC, 1_209_600), // 14 days
     oidcGoogleAudiences: csv(env.GOOGLE_CLIENT_IDS),
     oidcAppleAudiences: csv(env.APPLE_CLIENT_IDS),
+    geminiApiKey: env.GEMINI_API_KEY ?? null,
     anthropicApiKey: env.ANTHROPIC_API_KEY ?? null,
-    perceptionCheapModel: env.PERCEPTION_CHEAP_MODEL ?? "claude-haiku-4-5-20251001",
-    perceptionExpensiveModel: env.PERCEPTION_EXPENSIVE_MODEL ?? "claude-opus-4-8",
+    perceptionCheapModel: env.PERCEPTION_CHEAP_MODEL ?? (env.GEMINI_API_KEY != null ? "gemini-2.5-flash-lite" : "claude-haiku-4-5-20251001"),
+    perceptionExpensiveModel: env.PERCEPTION_EXPENSIVE_MODEL ?? (env.GEMINI_API_KEY != null ? "gemini-2.5-flash" : "claude-opus-4-8"),
     voyageApiKey: env.VOYAGE_API_KEY ?? null,
     embeddingModel: env.EMBEDDING_MODEL ?? "voyage-3",
     maxBodyBytes: int(env.MAX_BODY_BYTES, 8 * 1024 * 1024),

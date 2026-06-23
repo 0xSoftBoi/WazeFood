@@ -2,6 +2,7 @@ import { useCallback, useRef, useState } from "react";
 import { Platform, TextInput, View } from "react-native";
 import { useFocusEffect, useRouter } from "expo-router";
 import { CameraView, useCameraPermissions, type BarcodeScanningResult } from "expo-camera";
+import * as ImagePicker from "expo-image-picker";
 import { Ionicons } from "@expo/vector-icons";
 import * as Haptics from "expo-haptics";
 import { Button, Card, Screen, Text, useTheme } from "../../src/ui";
@@ -51,6 +52,27 @@ export default function ScanScreen() {
     void lookup(result.data);
   }, [lookup]);
 
+  // Snap/upload any product photo → Gemini Vision identifies it → resolve to the catalog.
+  const identifyByPhoto = useCallback(async () => {
+    const res = await ImagePicker.launchImageLibraryAsync({ base64: true, quality: 0.5, mediaTypes: "images" });
+    const asset = res.canceled ? undefined : res.assets[0];
+    if (asset?.base64 == null) return;
+    setStatus("Identifying your photo with AI…");
+    try {
+      const out = await api.identifyPhoto({ base64: asset.base64, mediaType: asset.mimeType ?? "image/jpeg" });
+      if (out.product != null) {
+        lock.current = true;
+        const p = out.product;
+        router.push({ pathname: "/product/[id]", params: { id: p.id, name: p.name, brand: p.brand ?? "", image: p.imageUrl ?? "", category: p.category } });
+        setTimeout(() => { lock.current = false; setStatus(null); }, 700);
+      } else {
+        setStatus(out.text != null ? `Saw "${out.text}" — not in the catalog yet.` : "Couldn't identify that photo.");
+      }
+    } catch {
+      setStatus("Identify failed — try again.");
+    }
+  }, [api, router]);
+
   const cameraOn = permission?.granted === true && active;
 
   return (
@@ -71,13 +93,18 @@ export default function ScanScreen() {
         </Card>
       )}
 
-      {Platform.OS === "web" && (
-        <Text variant="footnote" tone="tertiary" style={{ marginBottom: t.spacing.base }}>
-          Barcode scanning works best in the iOS/Android app. In a browser, look it up by name below.
-        </Text>
-      )}
+      <Button
+        title="Snap a photo to identify"
+        left={<Ionicons name="sparkles" size={18} color={t.colors.onPrimary} />}
+        onPress={() => void identifyByPhoto()}
+        fullWidth
+        style={{ marginBottom: t.spacing.sm }}
+      />
+      <Text variant="footnote" tone="tertiary" style={{ marginBottom: t.spacing.lg }}>
+        Take or upload a photo of any product — AI identifies it and finds the best nearby price.
+      </Text>
 
-      <Text variant="footnote" tone="secondary" style={{ marginBottom: t.spacing.sm }}>LOOK UP A PRODUCT</Text>
+      <Text variant="footnote" tone="secondary" style={{ marginBottom: t.spacing.sm }}>OR LOOK UP BY NAME / BARCODE</Text>
       <Card elevation="sm">
         <View style={{ flexDirection: "row", alignItems: "center", gap: t.spacing.sm }}>
           <Ionicons name="search" size={20} color={t.colors.textTertiary} />
