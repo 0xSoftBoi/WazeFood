@@ -20,6 +20,7 @@ function Navigator() {
     >
       <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
       <Stack.Screen name="product/[id]" options={{ title: "", headerBackTitle: "Back", presentation: "card" }} />
+      <Stack.Screen name="report/[productId]" options={{ title: "Report a price", presentation: "modal" }} />
     </Stack>
   );
 }

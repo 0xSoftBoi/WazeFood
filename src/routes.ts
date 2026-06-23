@@ -172,6 +172,18 @@ export function registerRoutes(router: Router, app: App): Router {
     return list === undefined ? (() => { throw notFound("list"); })() : ok(list);
   });
 
+  // Nearby stores (for the report-a-price store picker).
+  router.get("/stores/near", (ctx) => {
+    const lat = Number(ctx.query.get("lat"));
+    const lng = Number(ctx.query.get("lng"));
+    if (!Number.isFinite(lat) || !Number.isFinite(lng)) throw badRequest("lat, lng required");
+    const radius = Number(ctx.query.get("radius") ?? "25000");
+    const stores = app.catalog.nearbyStores({ lat, lng }, Number.isFinite(radius) ? radius : 25000).map((s) => ({
+      id: s.id, name: s.name, retailer: s.retailer, distanceMeters: Math.round(s.distanceMeters),
+    }));
+    return ok({ stores });
+  });
+
   // List with each item's best nearby price + a cart total (the screen-shaped payoff view).
   router.get("/lists/:id/priced", (ctx) => {
     const list = app.lists.getList(ctx.params.id!);

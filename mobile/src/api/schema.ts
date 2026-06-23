@@ -455,6 +455,46 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/stores/near": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Stores near a location (for the report-a-price store picker) */
+        get: {
+            parameters: {
+                query: {
+                    lat: number;
+                    lng: number;
+                    radius?: number;
+                };
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description ok */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["StoresNear"];
+                    };
+                };
+            };
+        };
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/deals/near": {
         parameters: {
             query?: never;
@@ -1094,6 +1134,15 @@ export interface components {
             /** Format: date-time */
             asOf?: string;
             distanceMeters?: number;
+        };
+        StoreNear: {
+            id: string;
+            name: string;
+            retailer: string;
+            distanceMeters: number;
+        };
+        StoresNear: {
+            stores: components["schemas"]["StoreNear"][];
         };
         Deal: {
             id: string;

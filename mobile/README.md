@@ -43,7 +43,22 @@ A full anonymous-first MVP:
 - `src/session.tsx` — anonymous-first session (token persisted via AsyncStorage), location, and the
   current list handle.
 
+## Native store builds (EAS)
+
+`eas.json` defines `development` / `preview` / `production` profiles. First time:
+
+```bash
+npm i -g eas-cli
+eas login
+eas init                 # links the project (writes extra.eas.projectId into app.json)
+eas build --profile production --platform ios       # or android / all
+eas submit --profile production --platform ios       # upload to App Store / Play
+```
+
+Set the production API URL in `eas.json` (`EXPO_PUBLIC_API_URL`). App icon/splash artwork
+(`assets/icon.png`, `assets/splash.png`) is the one remaining asset to add before submission.
+
 ## Next
 
-Social-login upgrade (`/auth/link`), real geolocation (`expo-location`), a map screen, receipt-photo
-capture into the ingestion pipeline, and app icon/splash artwork.
+Social-login upgrade (`/auth/link`), a map screen (`react-native-maps` + a web-maps choice), and
+icon/splash artwork.

@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useState } from "react";
 import { View } from "react-native";
-import { Stack, useLocalSearchParams } from "expo-router";
+import { Stack, useLocalSearchParams, useRouter } from "expo-router";
 import { Ionicons } from "@expo/vector-icons";
 import { Badge, Button, Card, PriceTag, Screen, Skeleton, Text, useTheme } from "../../src/ui";
 import { useSession } from "../../src/session";
@@ -9,6 +9,7 @@ import type { BestPrice } from "../../src/api/client";
 
 export default function ProductDetailScreen() {
   const t = useTheme();
+  const router = useRouter();
   const { id, name, brand } = useLocalSearchParams<{ id: string; name?: string; brand?: string }>();
   const { api, userId, location, ensureList } = useSession();
   const [price, setPrice] = useState<BestPrice | null>(null);
@@ -96,6 +97,13 @@ export default function ProductDetailScreen() {
       <View style={{ gap: t.spacing.sm }}>
         <Button title="Add to list" left={<Ionicons name="add" size={20} color={t.colors.onPrimary} />} loading={busy === "list"} onPress={addToList} fullWidth />
         <Button title="Watch price" variant="secondary" left={<Ionicons name="notifications-outline" size={18} color={t.colors.textPrimary} />} loading={busy === "watch"} onPress={watch} fullWidth />
+        <Button
+          title={found ? "Report a different price" : "Report a price"}
+          variant="ghost"
+          left={<Ionicons name="add-circle-outline" size={18} color={t.colors.primary} />}
+          onPress={() => router.push({ pathname: "/report/[productId]", params: { productId: id, name: name ?? "" } })}
+          fullWidth
+        />
       </View>
 
       {toast != null && (

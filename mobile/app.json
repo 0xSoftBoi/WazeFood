@@ -17,7 +17,8 @@
       "supportsTablet": true,
       "bundleIdentifier": "com.smartcart.app",
       "infoPlist": {
-        "NSCameraUsageDescription": "SmartCart uses the camera to scan grocery barcodes and look up the best nearby price.",
+        "NSCameraUsageDescription": "SmartCart uses the camera to scan grocery barcodes and capture receipts.",
+        "NSPhotoLibraryUsageDescription": "SmartCart lets you attach a receipt or shelf-tag photo to a price report.",
         "NSLocationWhenInUseUsageDescription": "SmartCart uses your location to find the best grocery prices at stores near you."
       }
     },

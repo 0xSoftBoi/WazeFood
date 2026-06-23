@@ -19,6 +19,7 @@ export type Gamification = S["Gamification"];
 export type Leaderboard = S["Leaderboard"];
 export type CartPlan = S["CartPlan"];
 export type Contribution = S["Contribution"];
+export type StoreNear = S["StoreNear"];
 
 export type LeaderWindow = "weekly" | "monthly" | "alltime";
 export type OptimizeMode = "chill" | "balanced" | "max";
@@ -70,6 +71,7 @@ export class ApiClient {
     return this.request<BestPrice>("GET", "/prices/best", { query: { productId, lat, lng, radius } });
   }
   dealsNear(lat: number, lng: number, radius?: number) { return this.request<DealsNear>("GET", "/deals/near", { query: { lat, lng, radius } }); }
+  storesNear(lat: number, lng: number, radius?: number) { return this.request<{ stores: StoreNear[] }>("GET", "/stores/near", { query: { lat, lng, radius } }); }
 
   // Lists
   createList(ownerId: string, name?: string) { return this.request<List>("POST", "/lists", { body: { ownerId, name } }); }

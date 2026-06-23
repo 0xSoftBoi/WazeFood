@@ -55,6 +55,19 @@ components:
         confidence: { type: number }
         asOf: { type: string, format: date-time }
         distanceMeters: { type: number }
+    StoreNear:
+      type: object
+      required: [id, name, retailer, distanceMeters]
+      properties:
+        id: { type: string }
+        name: { type: string }
+        retailer: { type: string }
+        distanceMeters: { type: number }
+    StoresNear:
+      type: object
+      required: [stores]
+      properties:
+        stores: { type: array, items: { $ref: "#/components/schemas/StoreNear" } }
     Deal:
       type: object
       required: [id, storeId, kind]
@@ -248,6 +261,15 @@ paths:
         - { name: radius, in: query, schema: { type: number } }
       responses:
         "200": { description: ok, content: { application/json: { schema: { $ref: "#/components/schemas/BestPrice" } } } }
+  /stores/near:
+    get:
+      summary: Stores near a location (for the report-a-price store picker)
+      parameters:
+        - { name: lat, in: query, required: true, schema: { type: number } }
+        - { name: lng, in: query, required: true, schema: { type: number } }
+        - { name: radius, in: query, schema: { type: number } }
+      responses:
+        "200": { description: ok, content: { application/json: { schema: { $ref: "#/components/schemas/StoresNear" } } } }
   /deals/near:
     get:
       summary: Deals and clearances reported nearby (H3 kRing feed)
