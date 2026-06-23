@@ -78,6 +78,7 @@ See [`docs/STATUS.md`](docs/STATUS.md) for what's done vs deferred and
 
 | Doc | What it covers |
 |---|---|
+| [`docs/GO-LIVE.md`](docs/GO-LIVE.md) | **Go-live checklist** — the sequenced account/key steps from nothing → live in the app stores |
 | [`docs/DEPLOY.md`](docs/DEPLOY.md) | **Deploy** — turnkey production setup (one-command Docker Compose, Render one-click, or your own cloud), config, and ops |
 | [`docs/STATUS.md`](docs/STATUS.md) | **Build status** — what's done vs deferred, and how to run everything (incl. durable mode) |
 | [`docs/IMPLEMENTATION.md`](docs/IMPLEMENTATION.md) | **The runnable scaffold** — how to run it and how every file maps to the architecture |
