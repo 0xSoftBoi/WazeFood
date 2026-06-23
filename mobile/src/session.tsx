@@ -24,19 +24,24 @@ export type AppLocation = { lat: number; lng: number; metro: string; source: Loc
 
 type SessionState = { userId: string | null; ready: boolean; error: string | null };
 
+export type AuthState = { signedIn: boolean; provider: string | null };
+
 type SessionValue = {
   api: ApiClient;
   userId: string | null;
   location: AppLocation;
   ready: boolean;
   error: string | null;
+  auth: AuthState;
   ensureList: () => Promise<string>;
+  linkWith: (provider: string, idToken: string) => Promise<void>;
 };
 
 const SessionContext = createContext<SessionValue | null>(null);
 
 export function SessionProvider({ children }: { children: React.ReactNode }) {
   const [state, setState] = useState<SessionState>({ userId: null, ready: false, error: null });
+  const [auth, setAuth] = useState<AuthState>({ signedIn: false, provider: null });
   const [location, setLocation] = useState<AppLocation>({ ...DEMO_LOCATION, metro: "slc", source: "demo" });
   const tokenRef = useRef<string | null>(null);
   const deviceIdRef = useRef<string>("pending");
@@ -91,9 +96,19 @@ export function SessionProvider({ children }: { children: React.ReactNode }) {
     return list.id;
   }, [api, state.userId]);
 
+  // Upgrade the anonymous guest in place by linking a verified provider id_token (same userId; all
+  // their data carries over). The backend rotates fresh tokens we then adopt.
+  const linkWith = useCallback(async (provider: string, idToken: string): Promise<void> => {
+    if (state.userId == null) throw new Error("not ready");
+    const res = await api.linkIdentity(state.userId, provider, idToken);
+    tokenRef.current = res.accessToken;
+    await AsyncStorage.setItem(KEYS.refresh, res.refreshToken);
+    setAuth({ signedIn: true, provider });
+  }, [api, state.userId]);
+
   const value = useMemo<SessionValue>(
-    () => ({ api, userId: state.userId, location, ready: state.ready, error: state.error, ensureList }),
-    [api, state, location, ensureList],
+    () => ({ api, userId: state.userId, location, ready: state.ready, error: state.error, auth, ensureList, linkWith }),
+    [api, state, location, auth, ensureList, linkWith],
   );
   return <SessionContext.Provider value={value}>{children}</SessionContext.Provider>;
 }

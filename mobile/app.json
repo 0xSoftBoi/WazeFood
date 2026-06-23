@@ -18,6 +18,7 @@
     "ios": {
       "supportsTablet": true,
       "bundleIdentifier": "com.smartcart.app",
+      "usesAppleSignIn": true,
       "infoPlist": {
         "NSCameraUsageDescription": "SmartCart uses the camera to scan grocery barcodes and capture receipts.",
         "NSPhotoLibraryUsageDescription": "SmartCart lets you attach a receipt or shelf-tag photo to a price report.",
@@ -40,7 +41,8 @@
     "plugins": [
       "expo-router",
       "expo-asset",
-      "expo-font"
+      "expo-font",
+      "expo-apple-authentication"
     ],
     "experiments": {
       "typedRoutes": true
