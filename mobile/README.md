@@ -65,6 +65,22 @@ Set the production API URL in `eas.json` (`EXPO_PUBLIC_API_URL`). Icon/splash ar
 "android": { "config": { "googleMaps": { "apiKey": "YOUR_ANDROID_MAPS_KEY" } } }
 ```
 
+**Social sign-in (feature-flagged):** the "Continue with Google / Apple" buttons on the **You** tab
+are hidden until you supply OAuth client IDs — the app ships dark with nothing broken. Enable by
+setting the relevant `EXPO_PUBLIC_*` env vars (e.g. in `eas.json` per profile, or a local `.env`):
+
+```bash
+EXPO_PUBLIC_GOOGLE_CLIENT_ID=...apps.googleusercontent.com          # web
+EXPO_PUBLIC_GOOGLE_IOS_CLIENT_ID=...apps.googleusercontent.com      # iOS
+EXPO_PUBLIC_GOOGLE_ANDROID_CLIENT_ID=...apps.googleusercontent.com  # Android
+EXPO_PUBLIC_APPLE_SIGNIN=1                                          # show Apple button (iOS)
+```
+
+Sign-in obtains a provider **id_token** and calls `POST /auth/link`, which verifies it against the
+provider's **JWKS** and upgrades the anonymous guest in place (same user, data preserved). Set the
+matching `GOOGLE_CLIENT_IDS` / `APPLE_CLIENT_IDS` on the **backend** so it accepts those audiences.
+For native Google on iOS, also add the reversed-client-id URL scheme to `app.json`.
+
 ## Next
 
 Social-login upgrade (`/auth/link`), a map screen (`react-native-maps` + a web-maps choice), and

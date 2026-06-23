@@ -3,15 +3,31 @@ import { View } from "react-native";
 import { useFocusEffect } from "expo-router";
 import { Ionicons } from "@expo/vector-icons";
 import { Badge, Card, Screen, Skeleton, Text, useTheme } from "../../src/ui";
+import { SocialSignIn } from "../../src/components/SocialSignIn";
+import { socialEnabled } from "../../src/config";
 import { useSession } from "../../src/session";
 import type { Gamification, Leaderboard } from "../../src/api/client";
 
 export default function ProfileScreen() {
   const t = useTheme();
-  const { api, userId, location } = useSession();
+  const { api, userId, location, auth, linkWith } = useSession();
   const [game, setGame] = useState<Gamification | null>(null);
   const [board, setBoard] = useState<Leaderboard | null>(null);
   const [refreshing, setRefreshing] = useState(false);
+  const [linking, setLinking] = useState<string | null>(null);
+  const [linkError, setLinkError] = useState<string | null>(null);
+
+  const onToken = useCallback(async (provider: string, token: string) => {
+    setLinking(provider);
+    setLinkError(null);
+    try {
+      await linkWith(provider, token);
+    } catch (e) {
+      setLinkError(e instanceof Error ? e.message : "Sign-in failed");
+    } finally {
+      setLinking(null);
+    }
+  }, [linkWith]);
 
   const load = useCallback(async () => {
     if (userId == null) return;
@@ -31,13 +47,22 @@ export default function ProfileScreen() {
       <Card elevation="md" style={{ marginBottom: t.spacing.base }}>
         <View style={{ flexDirection: "row", alignItems: "center", gap: t.spacing.base }}>
           <View style={{ width: 56, height: 56, borderRadius: 28, backgroundColor: t.colors.primary, alignItems: "center", justifyContent: "center" }}>
-            <Ionicons name="person" size={26} color={t.colors.onPrimary} />
+            <Ionicons name={auth.signedIn ? "checkmark" : "person"} size={26} color={t.colors.onPrimary} />
           </View>
           <View style={{ flex: 1 }}>
-            <Text variant="title3">Guest shopper</Text>
-            <Text variant="footnote" tone="secondary">Sign in later to save your list across devices</Text>
+            <Text variant="title3">{auth.signedIn ? "Signed in" : "Guest shopper"}</Text>
+            <Text variant="footnote" tone="secondary">
+              {auth.signedIn ? `Saved across your devices${auth.provider != null ? ` · ${auth.provider}` : ""}` : "Sign in to save your list across devices"}
+            </Text>
           </View>
         </View>
+
+        {!auth.signedIn && socialEnabled && (
+          <View style={{ marginTop: t.spacing.base, gap: t.spacing.sm }}>
+            <SocialSignIn onToken={onToken} busy={linking} />
+            {linkError != null && <Text variant="footnote" tone="danger">{linkError}</Text>}
+          </View>
+        )}
       </Card>
 
       <View style={{ flexDirection: "row", gap: t.spacing.sm, marginBottom: t.spacing.base }}>
