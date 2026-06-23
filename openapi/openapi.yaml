@@ -130,6 +130,24 @@ components:
         total: { type: number }
         pricedCount: { type: integer }
         itemCount: { type: integer }
+    Referral:
+      type: object
+      required: [id, referrerId, token, status]
+      properties:
+        id: { type: string }
+        referrerId: { type: string }
+        token: { type: string }
+        referredUserId: { type: string, nullable: true }
+        status: { type: string, enum: [invited, joined, activated, ineligible] }
+        ineligibleReason: { type: string, nullable: true }
+        activatedAt: { type: string, nullable: true }
+    ReferralProgress:
+      type: object
+      required: [activated, required, slots]
+      properties:
+        activated: { type: integer }
+        required: { type: integer }
+        slots: { type: array, items: { $ref: "#/components/schemas/Referral" } }
     Gamification:
       type: object
       required: [karma, reputation, badges]
@@ -379,11 +397,18 @@ paths:
   /referrals:
     post:
       summary: Create a referral invite
-      responses: { "201": { description: created } }
+      requestBody:
+        content: { application/json: { schema: { type: object, required: [referrerId], properties: { referrerId: { type: string } } } } }
+      responses:
+        "201": { description: created, content: { application/json: { schema: { $ref: "#/components/schemas/Referral" } } } }
   /referrals/open:
     post:
       summary: Record a referred user opening the link
-      responses: { "200": { description: ok }, "404": { description: bad token } }
+      requestBody:
+        content: { application/json: { schema: { type: object, required: [token, referredUserId], properties: { token: { type: string }, referredUserId: { type: string } } } } }
+      responses:
+        "200": { description: ok, content: { application/json: { schema: { $ref: "#/components/schemas/Referral" } } } }
+        "404": { description: bad token }
   /referrals/evaluate:
     post:
       summary: Evaluate a referred user's activation
@@ -392,4 +417,5 @@ paths:
     get:
       summary: Referral progress (activated / required)
       parameters: [{ name: referrerId, in: path, required: true, schema: { type: string } }]
-      responses: { "200": { description: ok } }
+      responses:
+        "200": { description: ok, content: { application/json: { schema: { $ref: "#/components/schemas/ReferralProgress" } } } }

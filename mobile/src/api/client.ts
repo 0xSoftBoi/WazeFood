@@ -20,6 +20,8 @@ export type Leaderboard = S["Leaderboard"];
 export type CartPlan = S["CartPlan"];
 export type Contribution = S["Contribution"];
 export type StoreNear = S["StoreNear"];
+export type Referral = S["Referral"];
+export type ReferralProgress = S["ReferralProgress"];
 
 export type LeaderWindow = "weekly" | "monthly" | "alltime";
 export type OptimizeMode = "chill" | "balanced" | "max";
@@ -91,6 +93,11 @@ export class ApiClient {
   addWatch(userId: string, productId: string, lat: number, lng: number, radius?: number) {
     return this.request<{ id: string }>("POST", "/watches", { body: { userId, productId, lat, lng, radius } });
   }
+
+  // Referral growth loop
+  createReferral(referrerId: string) { return this.request<Referral>("POST", "/referrals", { body: { referrerId } }); }
+  openReferral(token: string, referredUserId: string) { return this.request<Referral>("POST", "/referrals/open", { body: { token, referredUserId } }); }
+  referralProgress(referrerId: string) { return this.request<ReferralProgress>("GET", `/referrals/${referrerId}/progress`, {}); }
 
   // Contribute (crowdsource a price/scan)
   contribute(input: {

@@ -9,7 +9,7 @@ import * as Location from "expo-location";
 import { ApiClient, type Tokens } from "./api/client";
 import { API_BASE_URL, DEMO_LOCATION, DEMO_METRO } from "./config";
 
-const KEYS = { device: "sc.deviceId", refresh: "sc.refreshToken", list: "sc.listId" };
+const KEYS = { device: "sc.deviceId", refresh: "sc.refreshToken", list: "sc.listId", invite: "sc.inviteToken" };
 
 async function getOrCreateDeviceId(): Promise<string> {
   const existing = await AsyncStorage.getItem(KEYS.device);
@@ -34,6 +34,7 @@ type SessionValue = {
   error: string | null;
   auth: AuthState;
   ensureList: () => Promise<string>;
+  ensureInvite: () => Promise<string>;
   linkWith: (provider: string, idToken: string) => Promise<void>;
 };
 
@@ -96,6 +97,16 @@ export function SessionProvider({ children }: { children: React.ReactNode }) {
     return list.id;
   }, [api, state.userId]);
 
+  // Get-or-create this user's referral invite, persisting its share token so the link is stable.
+  const ensureInvite = useCallback(async (): Promise<string> => {
+    const cached = await AsyncStorage.getItem(KEYS.invite);
+    if (cached != null) return cached;
+    if (state.userId == null) throw new Error("not ready");
+    const invite = await api.createReferral(state.userId);
+    await AsyncStorage.setItem(KEYS.invite, invite.token);
+    return invite.token;
+  }, [api, state.userId]);
+
   // Upgrade the anonymous guest in place by linking a verified provider id_token (same userId; all
   // their data carries over). The backend rotates fresh tokens we then adopt.
   const linkWith = useCallback(async (provider: string, idToken: string): Promise<void> => {
@@ -107,8 +118,8 @@ export function SessionProvider({ children }: { children: React.ReactNode }) {
   }, [api, state.userId]);
 
   const value = useMemo<SessionValue>(
-    () => ({ api, userId: state.userId, location, ready: state.ready, error: state.error, auth, ensureList, linkWith }),
-    [api, state, location, auth, ensureList, linkWith],
+    () => ({ api, userId: state.userId, location, ready: state.ready, error: state.error, auth, ensureList, ensureInvite, linkWith }),
+    [api, state, location, auth, ensureList, ensureInvite, linkWith],
   );
   return <SessionContext.Provider value={value}>{children}</SessionContext.Provider>;
 }
