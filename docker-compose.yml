@@ -1,8 +1,13 @@
 # Local infra for when the scaffold graduates from in-memory adapters to real services.
 # `docker compose up -d` then set STORE_DRIVER=postgres / CACHE_DRIVER=redis in .env.
+# The image bundles PostGIS + pgvector + TimescaleDB so the relational repositories (and the
+# 0001/0002 migrations mounted below) all work. For the full app + API in one command, use
+# docker-compose.prod.yml instead.
 services:
   postgres:
-    image: postgis/postgis:16-3.4
+    build:
+      context: .
+      dockerfile: db/Dockerfile
     environment:
       POSTGRES_USER: smartcart
       POSTGRES_PASSWORD: smartcart
@@ -11,7 +16,6 @@ services:
       - "5432:5432"
     volumes:
       - pgdata:/var/lib/postgresql/data
-      - ./db/migrations:/docker-entrypoint-initdb.d:ro
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U smartcart"]
       interval: 5s

@@ -1,4 +1,6 @@
 node_modules
+**/node_modules
+mobile
 coverage
 .git
 .github
@@ -6,4 +8,6 @@ coverage
 dump.rdb
 tmp
 .env
+.env.*
 docs
+dist

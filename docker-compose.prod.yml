@@ -1,0 +1,61 @@
+# Turnkey production stack: API + Postgres (PostGIS + pgvector) + Redis, in one command.
+#
+#   cp .env.production.example .env.production   # then edit AUTH_SECRET, CORS_ORIGIN, …
+#   docker compose -f docker-compose.prod.yml up -d --build
+#
+# The API comes up on :3000 (put a TLS-terminating reverse proxy — Caddy/nginx/your cloud LB — in
+# front for production). Health: GET /health (liveness), GET /ready (readiness).
+services:
+  api:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    restart: unless-stopped
+    env_file: .env.production
+    environment:
+      NODE_ENV: production
+      PORT: "3000"
+      STORE_DRIVER: postgres
+      CACHE_DRIVER: redis
+      DATABASE_URL: postgres://smartcart:${POSTGRES_PASSWORD:-smartcart}@postgres:5432/smartcart
+      REDIS_URL: redis://redis:6379
+    ports:
+      - "3000:3000"
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+
+  postgres:
+    build:
+      context: .
+      dockerfile: db/Dockerfile
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: smartcart
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-smartcart}
+      POSTGRES_DB: smartcart
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U smartcart"]
+      interval: 5s
+      timeout: 3s
+      retries: 12
+
+  redis:
+    image: redis:7-alpine
+    restart: unless-stopped
+    command: ["redis-server", "--appendonly", "yes"]
+    volumes:
+      - redisdata:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 12
+
+volumes:
+  pgdata:
+  redisdata:
