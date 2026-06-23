@@ -78,6 +78,7 @@ See [`docs/STATUS.md`](docs/STATUS.md) for what's done vs deferred and
 
 | Doc | What it covers |
 |---|---|
+| [`docs/DEPLOY.md`](docs/DEPLOY.md) | **Deploy** — turnkey production setup (one-command Docker Compose, Render one-click, or your own cloud), config, and ops |
 | [`docs/STATUS.md`](docs/STATUS.md) | **Build status** — what's done vs deferred, and how to run everything (incl. durable mode) |
 | [`docs/IMPLEMENTATION.md`](docs/IMPLEMENTATION.md) | **The runnable scaffold** — how to run it and how every file maps to the architecture |
 | [`docs/proven-patterns.md`](docs/proven-patterns.md) | **How Netflix, Meta, Cloudflare, Uber, Waze & AWS solve SmartCart's exact problems** — each pattern mapped onto a workload, with citations. Start here for the "why." |

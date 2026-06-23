@@ -1,0 +1,47 @@
+# Render.com blueprint — one-click managed deploy (API + Postgres + Redis, auto-wired).
+# In Render: New → Blueprint → point at this repo. Adjust plans/region to your account's offerings.
+# Render Postgres supports pgvector + PostGIS (the app creates the extensions on boot; if a plan
+# disallows them it degrades gracefully). Set CORS_ORIGIN to your app's web origin after first deploy.
+services:
+  - type: web
+    name: wazefood-api
+    runtime: docker
+    dockerfilePath: ./Dockerfile
+    region: oregon
+    plan: starter
+    healthCheckPath: /health
+    autoDeploy: true
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: STORE_DRIVER
+        value: postgres
+      - key: CACHE_DRIVER
+        value: redis
+      - key: DATABASE_URL
+        fromDatabase:
+          name: wazefood-db
+          property: connectionString
+      - key: REDIS_URL
+        fromService:
+          type: redis
+          name: wazefood-redis
+          property: connectionString
+      - key: AUTH_SECRET
+        generateValue: true
+      - key: CORS_ORIGIN
+        value: "*"
+      # Optional features — add in the Render dashboard when you have the keys:
+      # GOOGLE_CLIENT_IDS, APPLE_CLIENT_IDS, ANTHROPIC_API_KEY, VOYAGE_API_KEY
+
+  - type: redis
+    name: wazefood-redis
+    region: oregon
+    plan: starter
+    ipAllowList: [] # only reachable from Render services in this blueprint
+
+databases:
+  - name: wazefood-db
+    region: oregon
+    plan: basic-256mb
+    postgresMajorVersion: "16"
