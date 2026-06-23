@@ -1,26 +1,75 @@
-# SmartCart
+<div align="center">
 
-> "Waze for grocery prices" — a consumer-powered grocery price intelligence network
-> that helps shoppers stop overpaying, and gets more valuable in every city as more
-> people contribute price, deal, and receipt data.
+<img src="mobile/assets/icon.png" width="104" alt="WazeFood app icon" />
 
-This repository holds the **scalable architecture plan** derived from the product brain dump
-**and a runnable modular-monolith backend scaffold that implements it**. It is designed to be
-**pragmatic at MVP scale** (first 50 users + Atozy soft launch) while keeping **clean seams to
-scale to millions of shoppers across many metros** without a rewrite.
+# WazeFood
 
-## Run the scaffold
+### Waze for grocery prices
 
-A working backend with **minimal dependencies** (Node 22 native TypeScript + in-memory
-adapters; `h3-js` for geo) — the whole value loop executes today; the module seams swap to managed cloud later.
+**Stop overpaying for groceries.** WazeFood is a consumer-powered price-intelligence network:
+shoppers crowdsource what things actually cost at stores near them, and everyone gets the cheapest
+nearby price for their list — the data graph gets more valuable in every city as more people
+contribute. (The codebase ships as the `smartcart` package; WazeFood is the app.)
+
+</div>
+
+## What it is
+
+Grocery prices are opaque and change constantly, and no single data source has them all. WazeFood
+turns shoppers into the sensor network: scan a barcode or snap a receipt, and your report joins a
+**confidence-scored, crowd-verified** price graph (the same way Waze turns drivers into traffic
+sensors). In return, every shopper gets:
+
+- the **best nearby price** for any product, with how far away and how fresh/trusted it is;
+- a **shopping list that prices itself** and a one-tap **trip optimizer** that shows the savings;
+- **deal alerts** and a **karma/leaderboard** loop that rewards the people who keep the data honest.
+
+It's built to be **pragmatic at MVP scale** (first users + a soft launch) while keeping **clean seams
+to scale to millions of shoppers across many metros** without a rewrite.
+
+## The app
+
+One **React Native (Expo) codebase → web, iOS, and Android**, anonymous-first (no signup to start),
+with an iOS-grade design system. The core loop:
+
+| Screen | What it does |
+|---|---|
+| **Home** | Large-title search + a live "deals near you" feed, located to where you actually are. |
+| **Product** | The best nearby price (store · distance · confidence) with add-to-list, watch-for-drops, and report-a-price. |
+| **List** | Every item priced with a running cart total, and a one-tap **trip optimizer** that shows "Save $X" across stores. |
+| **Scan** | Camera barcode scanner → resolves the product → jumps straight to its price. |
+| **Report** | Crowdsource a price: pick a nearby store, type the price or snap a receipt/shelf photo, earn karma. |
+| **You** | Your karma, weekly rank, badges, and the contributor leaderboard. |
 
 ```bash
-npm test          # 98 unit tests + 2 gated integration tests (run `npm install` first)
-npm run typecheck # tsc --noEmit  (run `npm install` first for dev deps)
-npm start         # API + web AR demo on :3000  → open http://localhost:3000/
+# run the app (one codebase, all three platforms)
+cd mobile && npm install
+npm run web        # browser   ·   npm run ios   ·   npm run android
+```
+
+The app talks to the backend through a **typed client generated from the OpenAPI spec**
+(`npm run gen:api`), and ships an **EAS** build config (`mobile/eas.json`) for real store binaries.
+See [`mobile/README.md`](mobile/README.md).
+
+## Run the backend
+
+A modular-monolith backend with **minimal dependencies** (Node 22 native TypeScript + in-memory
+adapters by default) — the whole value loop executes today; each module seam swaps to managed cloud
+when load triggers fire.
+
+```bash
+npm install
+npm test          # 99 unit tests + 2 gated integration tests
+npm run typecheck # tsc --noEmit
+npm start         # API + web demo on :3000  → open http://localhost:3000/
 npm run smoke     # programmatic walk through the value loop
 npm run test:it   # IT_DURABLE=1 + live Postgres/Redis → proves restart durability
 ```
+
+The previously-stubbed pieces are now **real implementations behind their seams** (zero-dependency
+default; graduate by supplying keys/services): OIDC sign-in (Apple/Google JWKS), VLM receipt
+perception, embedding-based product matching (pgvector), PostGIS/Timescale repositories, a hardened
+HTTP edge, multi-node-correct Redis, a durable anti-scraping ledger, and a Kafka outbox sink.
 
 See [`docs/STATUS.md`](docs/STATUS.md) for what's done vs deferred and
 [`docs/IMPLEMENTATION.md`](docs/IMPLEMENTATION.md) for the code → architecture map.
