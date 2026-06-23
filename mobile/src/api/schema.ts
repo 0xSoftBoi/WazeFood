@@ -972,14 +972,22 @@ export interface paths {
                 path?: never;
                 cookie?: never;
             };
-            requestBody?: never;
+            requestBody?: {
+                content: {
+                    "application/json": {
+                        referrerId: string;
+                    };
+                };
+            };
             responses: {
                 /** @description created */
                 201: {
                     headers: {
                         [name: string]: unknown;
                     };
-                    content?: never;
+                    content: {
+                        "application/json": components["schemas"]["Referral"];
+                    };
                 };
             };
         };
@@ -1006,14 +1014,23 @@ export interface paths {
                 path?: never;
                 cookie?: never;
             };
-            requestBody?: never;
+            requestBody?: {
+                content: {
+                    "application/json": {
+                        token: string;
+                        referredUserId: string;
+                    };
+                };
+            };
             responses: {
                 /** @description ok */
                 200: {
                     headers: {
                         [name: string]: unknown;
                     };
-                    content?: never;
+                    content: {
+                        "application/json": components["schemas"]["Referral"];
+                    };
                 };
                 /** @description bad token */
                 404: {
@@ -1088,7 +1105,9 @@ export interface paths {
                     headers: {
                         [name: string]: unknown;
                     };
-                    content?: never;
+                    content: {
+                        "application/json": components["schemas"]["ReferralProgress"];
+                    };
                 };
             };
         };
@@ -1194,6 +1213,21 @@ export interface components {
             total: number;
             pricedCount: number;
             itemCount: number;
+        };
+        Referral: {
+            id: string;
+            referrerId: string;
+            token: string;
+            referredUserId?: string | null;
+            /** @enum {string} */
+            status: "invited" | "joined" | "activated" | "ineligible";
+            ineligibleReason?: string | null;
+            activatedAt?: string | null;
+        };
+        ReferralProgress: {
+            activated: number;
+            required: number;
+            slots: components["schemas"]["Referral"][];
         };
         Gamification: {
             karma: number;

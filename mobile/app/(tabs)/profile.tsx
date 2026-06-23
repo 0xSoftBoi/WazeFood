@@ -4,6 +4,7 @@ import { useFocusEffect } from "expo-router";
 import { Ionicons } from "@expo/vector-icons";
 import { Badge, Card, Screen, Skeleton, Text, useTheme } from "../../src/ui";
 import { SocialSignIn } from "../../src/components/SocialSignIn";
+import { InviteCard } from "../../src/components/InviteCard";
 import { socialEnabled } from "../../src/config";
 import { useSession } from "../../src/session";
 import type { Gamification, Leaderboard } from "../../src/api/client";
@@ -64,6 +65,8 @@ export default function ProfileScreen() {
           </View>
         )}
       </Card>
+
+      <InviteCard />
 
       <View style={{ flexDirection: "row", gap: t.spacing.sm, marginBottom: t.spacing.base }}>
         <StatCard label="Karma" value={game?.karma} loading={game == null} icon="flame" />
