@@ -54,10 +54,10 @@ test("refresh-reuse detection revokes the whole session (token theft → one-use
   assert.equal(auth.verifyAccess(r1Tokens!.accessToken), null);
 });
 
-test("anonymous → link preserves the SAME user id (data carries over)", () => {
+test("anonymous → link preserves the SAME user id (data carries over)", async () => {
   const { auth } = setup();
   const guest = auth.anonymous({ metro: "slc", deviceId: "d1" });
-  const linked = auth.link({ userId: guest.userId, provider: "apple", token: "apple-subject-123|me@icloud.com", deviceId: "d1" });
+  const linked = await auth.link({ userId: guest.userId, provider: "apple", token: "apple-subject-123|me@icloud.com", deviceId: "d1" });
   assert.ok(linked.ok);
   if (linked.ok) {
     assert.equal(linked.tokens.userId, guest.userId, "same user id kept on upgrade");
@@ -66,13 +66,13 @@ test("anonymous → link preserves the SAME user id (data carries over)", () => 
   }
 });
 
-test("linking an identity already owned signs in to that account", () => {
+test("linking an identity already owned signs in to that account", async () => {
   const { auth } = setup();
   const a = auth.anonymous({ deviceId: "d1" });
-  auth.link({ userId: a.userId, provider: "google", token: "g-sub-1|a@gmail.com" });
+  await auth.link({ userId: a.userId, provider: "google", token: "g-sub-1|a@gmail.com" });
   // A different guest signs in with the same Google identity → resolves to the first account.
   const b = auth.anonymous({ deviceId: "d2" });
-  const signIn = auth.link({ userId: b.userId, provider: "google", token: "g-sub-1|a@gmail.com" });
+  const signIn = await auth.link({ userId: b.userId, provider: "google", token: "g-sub-1|a@gmail.com" });
   assert.ok(signIn.ok);
   if (signIn.ok) {
     assert.equal(signIn.tokens.userId, a.userId);
@@ -96,9 +96,9 @@ test("access tokens expire", () => {
   assert.equal(auth.verifyAccess(t0.accessToken), null);
 });
 
-test("an invalid provider token is rejected", () => {
+test("an invalid provider token is rejected", async () => {
   const { auth } = setup();
   const g = auth.anonymous({ deviceId: "d1" });
-  const r = auth.link({ userId: g.userId, provider: "apple", token: "" });
+  const r = await auth.link({ userId: g.userId, provider: "apple", token: "" });
   assert.equal(r.ok, false);
 });

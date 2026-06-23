@@ -12,6 +12,7 @@ import type { OutboxRecord, OutboxService } from "./service.ts";
 export type Sink = {
   name: string;
   deliver: (records: OutboxRecord[]) => Promise<void>; // throws on failure → events stay unpublished
+  close?: () => Promise<void>; // release a real producer connection (Kafka/Pub-Sub) on shutdown
 };
 
 export const consoleSink: Sink = {

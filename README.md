@@ -15,7 +15,7 @@ A working backend with **minimal dependencies** (Node 22 native TypeScript + in-
 adapters; `h3-js` for geo) — the whole value loop executes today; the module seams swap to managed cloud later.
 
 ```bash
-npm test          # 44 unit tests + 1 gated integration test (run `npm install` first)
+npm test          # 98 unit tests + 2 gated integration tests (run `npm install` first)
 npm run typecheck # tsc --noEmit  (run `npm install` first for dev deps)
 npm start         # API + web AR demo on :3000  → open http://localhost:3000/
 npm run smoke     # programmatic walk through the value loop
@@ -99,10 +99,22 @@ value loop (anonymous onboarding, search, TAO price reads, idempotent crowdsourc
 confidence scoring, price-drop alerts, gamification, token-gated explainable optimization, and
 referral activation), an **AR/smart-glasses scene layer** (price/aisle cards, deal pins, route
 line, per device tier + POV-glasses capture), and **barcode-first ingestion** (entity-resolution
-matching + cheap→expensive perception routing with cost accounting + media-hash dedup) — with 33
+matching + cheap→expensive perception routing with cost accounting + media-hash dedup) — with 54
 passing tests and a clean typecheck. **Persistence is wired and integration-tested**: the default
 is zero-dependency in-memory, and `STORE_DRIVER=postgres` / `CACHE_DRIVER=redis` graduate to real
 Postgres + Redis via write-behind + hydrate behind the same module interfaces — restart-durability
-proven in `test/persistence.it.test.ts` (`IT_DURABLE=1 npm run test:it`). Next: the event bus →
-Kafka/outbox, mobile client, and the service extractions in
+proven in `test/persistence.it.test.ts` (`IT_DURABLE=1 npm run test:it`). The **outbox relay** now
+drives a real **Kafka producer sink** (`OUTBOX_SINK=kafka` + `KAFKA_BROKERS`; partitioned by
+aggregate key, `seq`/`event-id` headers for idempotent consumers) alongside the console/webhook
+sinks — `kafkajs` is dynamically imported so the default stays zero-dependency.
+
+The previously-stubbed scaffolds are now **real implementations behind their seams** (zero-dep default;
+graduate by supplying keys/services): provider sign-in verifies Apple/Google id_tokens for real
+(**OIDC JWKS**, RS256/ES256, rotation + alg-confusion defense); receipt/shelf **perception** runs a real
+VLM (Anthropic, cheap→expensive escalation); product **matching** uses real embeddings + cosine vector
+search (local hashing default, **Voyage AI** optional) with a **pgvector** durable index; the HTTP edge is
+hardened (body cap, timeouts, gzip, graceful drain); the **Redis** cache is multi-node-correct
+(authoritative `INCRBY`/`ZINCRBY` + coherence refresh); abuse scoring has a **durable forensic ledger**
++ repeat-offender escalation; and **PostGIS**/**Timescale** repositories back geo/history. Next: the
+mobile client, wiring the PostGIS/Timescale repos into catalog/pricing, and the service extractions in
 [`docs/scaling-playbook.md`](docs/scaling-playbook.md).

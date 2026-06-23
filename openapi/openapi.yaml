@@ -5,7 +5,8 @@ info:
   description: >
     Backend-for-frontend over the SmartCart modular monolith. Endpoints are coarse and
     screen-shaped. All requests carry an `x-device-id`; authenticated requests add
-    `Authorization: Bearer user:<id>`. See docs/ARCHITECTURE.md.
+    `Authorization: Bearer <accessToken>` (a short-lived JWT from /auth/anonymous or /auth/link).
+    See docs/ARCHITECTURE.md.
 servers:
   - url: http://localhost:3000
 components:
@@ -16,16 +17,137 @@ components:
       required: true
       schema: { type: string }
   schemas:
+    Tokens:
+      type: object
+      required: [accessToken, refreshToken, expiresInSec, userId]
+      properties:
+        accessToken: { type: string }
+        refreshToken: { type: string }
+        expiresInSec: { type: integer }
+        userId: { type: string }
+    Product:
+      type: object
+      required: [id, name, category, isStoreBrand]
+      properties:
+        id: { type: string }
+        name: { type: string }
+        brand: { type: string, nullable: true }
+        sizeValue: { type: number, nullable: true }
+        sizeUnit: { type: string, nullable: true }
+        category: { type: string }
+        isStoreBrand: { type: boolean }
+        upc: { type: string, nullable: true }
+    SearchResults:
+      type: object
+      required: [query, results]
+      properties:
+        query: { type: string }
+        results: { type: array, items: { $ref: "#/components/schemas/Product" } }
     BestPrice:
       type: object
+      required: [found]
       properties:
         found: { type: boolean }
         productId: { type: string }
         storeId: { type: string }
         price: { type: number }
+        unitOk: { type: boolean }
         confidence: { type: number }
         asOf: { type: string, format: date-time }
         distanceMeters: { type: number }
+    StoreNear:
+      type: object
+      required: [id, name, retailer, distanceMeters]
+      properties:
+        id: { type: string }
+        name: { type: string }
+        retailer: { type: string }
+        distanceMeters: { type: number }
+    StoresNear:
+      type: object
+      required: [stores]
+      properties:
+        stores: { type: array, items: { $ref: "#/components/schemas/StoreNear" } }
+    Deal:
+      type: object
+      required: [id, storeId, kind]
+      properties:
+        id: { type: string }
+        storeId: { type: string }
+        productId: { type: string, nullable: true }
+        kind: { type: string, enum: [price, receipt, shelf, clearance, oos, aisle, coupon] }
+        cell: { type: string }
+        createdAt: { type: string, format: date-time }
+    DealsNear:
+      type: object
+      required: [deals]
+      properties:
+        deals: { type: array, items: { $ref: "#/components/schemas/Deal" } }
+    List:
+      type: object
+      required: [id, ownerId, name, createdAt]
+      properties:
+        id: { type: string }
+        ownerId: { type: string }
+        householdId: { type: string, nullable: true }
+        name: { type: string }
+        createdAt: { type: string, format: date-time }
+    ListItem:
+      type: object
+      required: [id, listId, productId, qty]
+      properties:
+        id: { type: string }
+        listId: { type: string }
+        productId: { type: string }
+        qty: { type: number }
+    PricedListItem:
+      type: object
+      required: [id, productId, qty, name]
+      properties:
+        id: { type: string }
+        productId: { type: string }
+        qty: { type: number }
+        name: { type: string }
+        brand: { type: string, nullable: true }
+        best:
+          type: object
+          nullable: true
+          properties:
+            price: { type: number }
+            storeId: { type: string }
+            confidence: { type: number }
+            distanceMeters: { type: number }
+        lineTotal: { type: number, nullable: true }
+    PricedList:
+      type: object
+      required: [id, name, items, total, pricedCount, itemCount]
+      properties:
+        id: { type: string }
+        name: { type: string }
+        items: { type: array, items: { $ref: "#/components/schemas/PricedListItem" } }
+        total: { type: number }
+        pricedCount: { type: integer }
+        itemCount: { type: integer }
+    Gamification:
+      type: object
+      required: [karma, reputation, badges]
+      properties:
+        karma: { type: integer }
+        reputation: { type: number }
+        badges: { type: array, items: { type: string } }
+    LeaderboardEntry:
+      type: object
+      required: [userId, score]
+      properties:
+        userId: { type: string }
+        score: { type: number }
+    Leaderboard:
+      type: object
+      required: [window, metro, entries]
+      properties:
+        window: { type: string }
+        metro: { type: string }
+        entries: { type: array, items: { $ref: "#/components/schemas/LeaderboardEntry" } }
     CartPlan:
       type: object
       properties:
@@ -42,6 +164,22 @@ components:
             storeDifferences: { type: number }
             coupons: { type: number }
             gasEstimate: { type: number }
+        stores:
+          type: array
+          items:
+            type: object
+            properties:
+              storeId: { type: string }
+              items:
+                type: array
+                items:
+                  type: object
+                  properties:
+                    productId: { type: string }
+                    qty: { type: number }
+                    storeId: { type: string }
+                    unitPrice: { type: number }
+                    swappedFrom: { type: string, nullable: true }
     Contribution:
       type: object
       properties:
@@ -83,11 +221,28 @@ paths:
       summary: Price-drop / deal notifications
       parameters: [{ name: id, in: path, required: true, schema: { type: string } }]
       responses: { "200": { description: ok } }
+  /auth/anonymous:
+    post:
+      summary: Start an anonymous session (anonymous-first) — returns access + refresh tokens
+      parameters: [{ $ref: "#/components/parameters/DeviceId" }]
+      requestBody:
+        content: { application/json: { schema: { type: object, properties: { metro: { type: string } } } } }
+      responses:
+        "201": { description: created, content: { application/json: { schema: { $ref: "#/components/schemas/Tokens" } } } }
+  /auth/refresh:
+    post:
+      summary: Rotate tokens (rotating refresh + reuse detection)
+      requestBody:
+        content: { application/json: { schema: { type: object, required: [refreshToken], properties: { refreshToken: { type: string } } } } }
+      responses:
+        "200": { description: ok, content: { application/json: { schema: { $ref: "#/components/schemas/Tokens" } } } }
+        "401": { description: invalid / expired / reuse detected }
   /search:
     get:
       summary: Product search (records referral activation signal when authenticated)
       parameters: [{ name: q, in: query, schema: { type: string } }]
-      responses: { "200": { description: ok } }
+      responses:
+        "200": { description: ok, content: { application/json: { schema: { $ref: "#/components/schemas/SearchResults" } } } }
   /catalog/resolve:
     get:
       summary: Resolve a barcode or cryptic line-item text to a canonical product (entity resolution)
@@ -106,20 +261,63 @@ paths:
         - { name: radius, in: query, schema: { type: number } }
       responses:
         "200": { description: ok, content: { application/json: { schema: { $ref: "#/components/schemas/BestPrice" } } } }
+  /stores/near:
+    get:
+      summary: Stores near a location (for the report-a-price store picker)
+      parameters:
+        - { name: lat, in: query, required: true, schema: { type: number } }
+        - { name: lng, in: query, required: true, schema: { type: number } }
+        - { name: radius, in: query, schema: { type: number } }
+      responses:
+        "200": { description: ok, content: { application/json: { schema: { $ref: "#/components/schemas/StoresNear" } } } }
+  /deals/near:
+    get:
+      summary: Deals and clearances reported nearby (H3 kRing feed)
+      parameters:
+        - { name: lat, in: query, required: true, schema: { type: number } }
+        - { name: lng, in: query, required: true, schema: { type: number } }
+        - { name: radius, in: query, schema: { type: number } }
+      responses:
+        "200": { description: ok, content: { application/json: { schema: { $ref: "#/components/schemas/DealsNear" } } } }
+  /users/{id}/gamification:
+    get:
+      summary: Karma, reputation, and earned badges
+      parameters: [{ name: id, in: path, required: true, schema: { type: string } }]
+      responses:
+        "200": { description: ok, content: { application/json: { schema: { $ref: "#/components/schemas/Gamification" } } } }
   /lists:
     post:
       summary: Create a grocery list
-      responses: { "201": { description: created } }
+      requestBody:
+        content: { application/json: { schema: { type: object, required: [ownerId], properties: { ownerId: { type: string }, name: { type: string } } } } }
+      responses:
+        "201": { description: created, content: { application/json: { schema: { $ref: "#/components/schemas/List" } } } }
   /lists/{id}:
     get:
       summary: Get a list with items
       parameters: [{ name: id, in: path, required: true, schema: { type: string } }]
-      responses: { "200": { description: ok }, "404": { description: not found } }
+      responses:
+        "200": { description: ok, content: { application/json: { schema: { allOf: [{ $ref: "#/components/schemas/List" }, { type: object, properties: { items: { type: array, items: { $ref: "#/components/schemas/ListItem" } } } }] } } } }
+        "404": { description: not found }
+  /lists/{id}/priced:
+    get:
+      summary: List with each item's best nearby price + a cart total
+      parameters:
+        - { name: id, in: path, required: true, schema: { type: string } }
+        - { name: lat, in: query, required: true, schema: { type: number } }
+        - { name: lng, in: query, required: true, schema: { type: number } }
+        - { name: radius, in: query, schema: { type: number } }
+      responses:
+        "200": { description: ok, content: { application/json: { schema: { $ref: "#/components/schemas/PricedList" } } } }
+        "404": { description: not found }
   /lists/{id}/items:
     post:
       summary: Add an item to a list
       parameters: [{ name: id, in: path, required: true, schema: { type: string } }]
-      responses: { "201": { description: created } }
+      requestBody:
+        content: { application/json: { schema: { type: object, required: [ownerId, productId], properties: { ownerId: { type: string }, productId: { type: string }, qty: { type: number } } } } }
+      responses:
+        "201": { description: created, content: { application/json: { schema: { $ref: "#/components/schemas/ListItem" } } } }
   /contributions:
     post:
       summary: Submit a crowdsourced contribution (idempotent, geofence-validated, scored)
@@ -165,6 +363,8 @@ paths:
   /watches:
     post:
       summary: Add a watchlist item (free users limited to 3)
+      requestBody:
+        content: { application/json: { schema: { type: object, required: [userId, productId, lat, lng], properties: { userId: { type: string }, productId: { type: string }, lat: { type: number }, lng: { type: number }, radius: { type: number } } } } }
       responses: { "201": { description: created }, "402": { description: watch limit reached } }
   /leaderboard:
     get:
@@ -172,7 +372,8 @@ paths:
       parameters:
         - { name: window, in: query, schema: { type: string, enum: [weekly, monthly, alltime] } }
         - { name: metro, in: query, schema: { type: string } }
-      responses: { "200": { description: ok } }
+      responses:
+        "200": { description: ok, content: { application/json: { schema: { $ref: "#/components/schemas/Leaderboard" } } } }
   /referrals:
     post:
       summary: Create a referral invite

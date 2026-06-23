@@ -3,7 +3,18 @@
 // is the same.
 
 import { createServer, type IncomingMessage, type ServerResponse } from "node:http";
+import { gzipSync } from "node:zlib";
 import { AppError } from "../errors.ts";
+
+// Edge-hardening knobs. Defaults are sane for a single node behind (eventually) a CDN/WAF; a real
+// deployment also caps these upstream. maxBodyBytes is generous enough for base64 receipt photos.
+export type RouterOptions = {
+  maxBodyBytes?: number;
+  requestTimeoutMs?: number;
+  headersTimeoutMs?: number;
+  keepAliveTimeoutMs?: number;
+  gzip?: boolean;
+};
 
 export type Ctx = {
   method: string;
@@ -26,6 +37,17 @@ type Compiled = { method: string; segments: string[]; handler: Route };
 export class Router {
   private readonly routes: Compiled[] = [];
   private readonly middleware: Middleware[] = [];
+  private readonly opts: Required<RouterOptions>;
+
+  constructor(opts: RouterOptions = {}) {
+    this.opts = {
+      maxBodyBytes: opts.maxBodyBytes ?? 8 * 1024 * 1024, // 8 MiB — fits a base64 receipt photo
+      requestTimeoutMs: opts.requestTimeoutMs ?? 30_000,
+      headersTimeoutMs: opts.headersTimeoutMs ?? 20_000,
+      keepAliveTimeoutMs: opts.keepAliveTimeoutMs ?? 5_000,
+      gzip: opts.gzip ?? true,
+    };
+  }
 
   use(mw: Middleware): this {
     this.middleware.push(mw);
@@ -118,34 +140,73 @@ export class Router {
   listen(port: number, onReady?: () => void) {
     const server = createServer((req: IncomingMessage, res: ServerResponse) => {
       const chunks: Buffer[] = [];
-      req.on("data", (c: Buffer) => chunks.push(c));
+      let received = 0;
+      let aborted = false;
+
+      req.on("error", () => { aborted = true; });
+      req.on("data", (c: Buffer) => {
+        if (aborted) return;
+        received += c.length;
+        // Cap the in-memory body so a large/slow upload can't exhaust memory (413, then hang up).
+        if (received > this.opts.maxBodyBytes) {
+          aborted = true;
+          this.send(req, res, { status: 413, body: { error: "payload_too_large", message: `body exceeds ${this.opts.maxBodyBytes} bytes` } });
+          req.destroy();
+          return;
+        }
+        chunks.push(c);
+      });
+
       req.on("end", async () => {
+        if (aborted) return;
         let body: unknown = undefined;
         if (chunks.length > 0) {
           const raw = Buffer.concat(chunks).toString("utf8");
           try {
             body = raw.length > 0 ? JSON.parse(raw) : undefined;
           } catch {
-            res.writeHead(400, { "content-type": "application/json" });
-            res.end(JSON.stringify({ error: "bad_request", message: "invalid JSON" }));
+            this.send(req, res, { status: 400, body: { error: "bad_request", message: "invalid JSON" } });
             return;
           }
         }
-        const reply = await this.dispatch({
-          method: req.method ?? "GET",
-          url: req.url ?? "/",
-          headers: req.headers,
-          body,
-        });
-        // String bodies are sent raw (HTML/text); everything else is JSON.
-        const isRaw = typeof reply.body === "string";
-        const contentType = reply.headers?.["content-type"] ?? (isRaw ? "text/plain; charset=utf-8" : "application/json");
-        res.writeHead(reply.status, { ...(reply.headers ?? {}), "content-type": contentType });
-        if (reply.body === undefined) res.end("");
-        else res.end(isRaw ? (reply.body as string) : JSON.stringify(reply.body));
+        try {
+          const reply = await this.dispatch({ method: req.method ?? "GET", url: req.url ?? "/", headers: req.headers, body });
+          this.send(req, res, reply);
+        } catch (e) {
+          this.send(req, res, { status: 500, body: { error: "internal", message: (e as Error).message } });
+        }
       });
     });
+
+    // Slowloris / hung-socket defenses (Node applies these at the server level).
+    server.requestTimeout = this.opts.requestTimeoutMs;
+    server.headersTimeout = this.opts.headersTimeoutMs;
+    server.keepAliveTimeout = this.opts.keepAliveTimeoutMs;
     server.listen(port, onReady);
     return server;
+  }
+
+  // Serialize a Reply to the socket, gzipping JSON/text when the client accepts it and it's worth it.
+  private send(req: IncomingMessage, res: ServerResponse, reply: Reply): void {
+    if (res.headersSent || res.writableEnded) return;
+    const isRaw = typeof reply.body === "string";
+    const contentType = reply.headers?.["content-type"] ?? (isRaw ? "text/plain; charset=utf-8" : "application/json");
+    const headers: Record<string, string> = { ...(reply.headers ?? {}), "content-type": contentType };
+
+    if (reply.body === undefined) {
+      res.writeHead(reply.status, headers);
+      res.end("");
+      return;
+    }
+    const payload = Buffer.from(isRaw ? (reply.body as string) : JSON.stringify(reply.body));
+    const acceptsGzip = String(req.headers["accept-encoding"] ?? "").includes("gzip");
+    if (this.opts.gzip && acceptsGzip && payload.length >= 1024) {
+      const gz = gzipSync(payload);
+      res.writeHead(reply.status, { ...headers, "content-encoding": "gzip", vary: "Accept-Encoding" });
+      res.end(gz);
+      return;
+    }
+    res.writeHead(reply.status, headers);
+    res.end(payload);
   }
 }

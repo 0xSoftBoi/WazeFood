@@ -56,3 +56,28 @@ jobs:
         run: npm install --no-audit --no-fund
       - name: Integration test (durability vs live Postgres + Redis)
         run: npm run test:it
+
+  mobile:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: mobile
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: "npm"
+          cache-dependency-path: mobile/package-lock.json
+      - name: Install dependencies
+        run: npm install --no-audit --no-fund
+      - name: Regenerate API client and check it is in sync
+        run: |
+          cd ..
+          npm install --no-audit --no-fund
+          npm run gen:api
+          git diff --exit-code mobile/src/api/schema.ts || (echo "::error::OpenAPI client out of date — run 'npm run gen:api'" && exit 1)
+      - name: Typecheck
+        run: npx tsc --noEmit
+      - name: Web build
+        run: npx expo export -p web

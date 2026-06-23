@@ -32,12 +32,15 @@ export type Identity = {
 
 export type Tokens = { accessToken: string; refreshToken: string; expiresInSec: number; userId: string };
 
-// Verifies a provider id_token. Dev verifier decodes "subject|email"; production swaps in
-// Apple/Google JWKS (RS256) verification behind this same interface.
-export type IdentityVerifier = { verify: (provider: string, token: string) => { subject: string; email: string | null } | null };
+// Verifies a provider id_token (async — real verification fetches/caches the provider JWKS).
+// Dev verifier decodes "subject|email"; production swaps in the OidcVerifier (Apple/Google JWKS,
+// RS256/ES256) from platform/auth/oidc.ts behind this same interface.
+export type IdentityVerifier = {
+  verify: (provider: string, token: string) => Promise<{ subject: string; email: string | null } | null>;
+};
 
 export const devVerifier: IdentityVerifier = {
-  verify: (_provider, token) => {
+  verify: async (_provider, token) => {
     const [subject, email] = token.split("|");
     if (subject === undefined || subject.length === 0) return null;
     return { subject, email: email ?? null };
@@ -135,10 +138,11 @@ export class AuthService {
 
   // Upgrade: a guest signs in with a provider. If the identity is new, link it to the SAME guest
   // user (data preserved). If it already belongs to someone, sign in to that account.
-  link(input: { userId: string; provider: string; token: string; deviceId?: string }):
+  async link(input: { userId: string; provider: string; token: string; deviceId?: string }): Promise<
     | { ok: true; tokens: Tokens; upgraded: boolean; signedInToExisting: boolean }
-    | { ok: false; error: "invalid_token" } {
-    const verified = this.deps.verifier.verify(input.provider, input.token);
+    | { ok: false; error: "invalid_token" }
+  > {
+    const verified = await this.deps.verifier.verify(input.provider, input.token);
     if (verified === null) return { ok: false, error: "invalid_token" };
 
     const key = `${input.provider}:${verified.subject}`;

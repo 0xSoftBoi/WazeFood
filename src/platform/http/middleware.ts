@@ -12,6 +12,24 @@ function header(ctx: Ctx, name: string): string | undefined {
   return Array.isArray(v) ? v[0] : v;
 }
 
+// CORS for the web build of the app (react-native-web runs in a browser, so cross-origin calls to
+// the API need this; native iOS/Android don't). Short-circuits the OPTIONS preflight and stamps the
+// allow-headers on every reply. Use a concrete origin (not "*") in production.
+export function cors(origin = "*"): Middleware {
+  const corsHeaders: Record<string, string> = {
+    "access-control-allow-origin": origin,
+    "access-control-allow-methods": "GET,POST,PATCH,OPTIONS",
+    "access-control-allow-headers": "content-type,authorization,x-device-id",
+    "access-control-max-age": "86400",
+    ...(origin === "*" ? {} : { vary: "Origin" }),
+  };
+  return async (ctx, next) => {
+    if (ctx.method === "OPTIONS") return { status: 204, headers: corsHeaders };
+    const reply = await next();
+    return { ...reply, headers: { ...corsHeaders, ...(reply.headers ?? {}) } };
+  };
+}
+
 // Attaches deviceId (anonymous-ok) and userId (when a valid access JWT is present). Anonymous-
 // first: a missing/invalid token simply leaves userId null — the request still proceeds.
 export function identity(verifyAccess?: (token: string) => { userId: string } | null): Middleware {

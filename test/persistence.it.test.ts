@@ -28,6 +28,8 @@ async function resetState(cfg: ReturnType<typeof durableConfig>) {
   const pool = new Pool({ connectionString: cfg.databaseUrl, max: 1 });
   await pool.query("CREATE TABLE IF NOT EXISTS doc_rows (table_name TEXT, id TEXT, data JSONB, updated_at TIMESTAMPTZ DEFAULT now(), PRIMARY KEY (table_name, id))");
   await pool.query("TRUNCATE doc_rows");
+  // Relational repo tables — drop so bootstrap recreates them fresh via 0002_relational.sql.
+  await pool.query("DROP TABLE IF EXISTS product_vectors, store_geo, price_points");
   await pool.end();
   const { createClient } = await import("redis");
   const r = createClient({ url: cfg.redisUrl });
@@ -71,7 +73,40 @@ test("data written by one instance is durable and hydrates into a fresh instance
     // Event log (outbox) durability — the full event history persisted to Postgres:
     assert.ok(d2.app.outbox.count() > 0, "outbox event log hydrated from Postgres");
     assert.ok((d2.app.outbox.countByType()["price.updated"] ?? 0) > 0, "price.updated events persisted");
+
+    // Dedicated relational repositories are Postgres-backed in durable mode:
+    // pgvector — the matcher's vector index resolved a text query against product_vectors.
+    const m = await d2.app.matching.resolve({ text: "eggs" });
+    assert.ok(m.productId !== null, "pgvector matcher resolved a text query");
+    // PostGIS + Timescale repos round-trip:
+    await d2.app.repositories.geo.upsert({ id: seed.stores.smiths, lat: seed.at.lat, lng: seed.at.lng });
+    const near = await d2.app.repositories.geo.nearby(seed.at.lat, seed.at.lng, 1000);
+    assert.ok(near.some((r) => r.id === seed.stores.smiths), "PostGIS ST_DWithin found the store");
+    await d2.app.repositories.history.append({ productId: seed.products.eggs, storeId: seed.stores.smiths, price: 4.49, confidence: 0.9, at: "2026-06-20T12:00:00Z" });
+    const latest = await d2.app.repositories.history.latest(seed.products.eggs, seed.stores.smiths);
+    assert.equal(latest?.price, 4.49, "Timescale price_points round-tripped");
   } finally {
     await d2.close();
+  }
+});
+
+test("Redis counters aggregate across two client instances (multi-node correctness)", { skip: !RUN }, async () => {
+  const cfg = durableConfig();
+  await resetState(cfg);
+  const { RedisCache } = await import("../src/platform/cache/redis.ts");
+  const a = new RedisCache(cfg.redisUrl, clock);
+  const b = new RedisCache(cfg.redisUrl, clock);
+  await a.init();
+  await b.init();
+  try {
+    a.incr("it:counter", 1, 60_000);
+    b.incr("it:counter", 1, 60_000);
+    await a.flush();
+    await b.flush();
+    await a.refresh();
+    assert.equal(a.get<number>("it:counter"), 2, "server-side INCRBY aggregated both nodes (no lost update)");
+  } finally {
+    await a.close();
+    await b.close();
   }
 });

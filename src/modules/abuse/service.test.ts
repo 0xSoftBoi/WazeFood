@@ -2,13 +2,24 @@ import { test } from "node:test";
 import assert from "node:assert/strict";
 import { MemoryCache } from "../../platform/cache/cache.ts";
 import { fixedClock } from "../../platform/clock.ts";
+import { memoryTableFactory, type Table, type TableFactory } from "../../platform/store/store.ts";
 import { AbuseScoreService } from "./service.ts";
 
-function svc(opts: Partial<{ mode: "monitor" | "enforce"; deviceSoftPerMin: number; deviceHardPerMin: number }> = {}) {
+function svc(opts: Partial<{ mode: "monitor" | "enforce"; deviceSoftPerMin: number; deviceHardPerMin: number; tables: TableFactory }> = {}) {
   const clock = fixedClock(new Date("2026-06-20T12:00:00Z"));
   return new AbuseScoreService({ cache: new MemoryCache(clock), clock, h3Resolution: 8, ...opts });
 }
 const at = { lat: 40.7608, lng: -111.891 };
+
+// A factory that returns the SAME table per name across service instances — simulates a shared
+// durable store surviving a restart / serving a second node.
+function sharedFactory(): TableFactory {
+  const cache = new Map<string, unknown>();
+  return <T extends { id: string }>(name: string): Table<T> => {
+    if (!cache.has(name)) cache.set(name, memoryTableFactory<T>(name));
+    return cache.get(name) as Table<T>;
+  };
+}
 
 test("a normal nearby price lookup scores low and is allowed", () => {
   const a = svc();
@@ -59,4 +70,37 @@ test("monitor mode scores and observes but never blocks (phased rollout)", () =>
   const r = a.score({ deviceId: "d5", userId: "u5", route: "/prices/best", productId: "prd_canary_1", ...at });
   assert.equal(r.observed, "block");
   assert.equal(r.decision, "allow", "monitor mode does not enforce");
+});
+
+test("a flagged request is written to the durable ledger for forensics", () => {
+  const a = svc();
+  a.addCanary("prd_canary_1");
+  a.score({ deviceId: "d6", userId: "u6", route: "/prices/best", productId: "prd_canary_1", ...at });
+  const flags = a.recentFlags();
+  assert.equal(flags.length, 1);
+  assert.equal(flags[0]!.decision, "block");
+  assert.ok(flags[0]!.reasons.includes("honeytoken_canary"));
+  assert.equal(a.metrics().ledgerSize, 1);
+  assert.equal(a.topOffenders()[0]!.acct, "u6");
+});
+
+test("a normal request leaves no ledger trace", () => {
+  const a = svc();
+  a.score({ deviceId: "d7", userId: "u7", route: "/prices/best", productId: "prd_eggs", ...at });
+  assert.equal(a.metrics().ledgerSize, 0);
+});
+
+test("a repeat offender is escalated on return — durably, surviving a restart", () => {
+  const tables = sharedFactory();
+  // Node A: an account trips the breadth signal and accrues flags in the durable offender table.
+  const a = svc({ tables });
+  for (let i = 0; i < 45; i++) a.score({ deviceId: "dScrape", userId: "uScrape", route: "/prices/best", productId: "p" + i, ...at });
+  assert.ok(a.topOffenders()[0]!.flags > 0);
+
+  // Node B (fresh process, same durable store): a SINGLE benign-looking request from that account is
+  // already escalated by its history — the repeat-offender signal fires on the first request.
+  const b = svc({ tables });
+  const r = b.score({ deviceId: "dScrape", userId: "uScrape", route: "/prices/best", productId: "prd_eggs", ...at });
+  assert.ok(r.reasons.some((x) => x.startsWith("repeat_offender")), `reasons: ${r.reasons.join(",")}`);
+  assert.ok(r.score > 0);
 });
