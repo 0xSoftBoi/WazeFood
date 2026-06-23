@@ -3,6 +3,7 @@ import { View } from "react-native";
 import { Stack, useLocalSearchParams, useRouter } from "expo-router";
 import { Ionicons } from "@expo/vector-icons";
 import { Badge, Button, Card, PriceTag, Screen, Skeleton, Text, useTheme } from "../../src/ui";
+import { ProductImage } from "../../src/components/ProductImage";
 import { useSession } from "../../src/session";
 import { confidencePct, km, prettyStore } from "../../src/lib/format";
 import type { BestPrice } from "../../src/api/client";
@@ -10,7 +11,7 @@ import type { BestPrice } from "../../src/api/client";
 export default function ProductDetailScreen() {
   const t = useTheme();
   const router = useRouter();
-  const { id, name, brand } = useLocalSearchParams<{ id: string; name?: string; brand?: string }>();
+  const { id, name, brand, image, category } = useLocalSearchParams<{ id: string; name?: string; brand?: string; image?: string; category?: string }>();
   const { api, userId, location, ensureList } = useSession();
   const [price, setPrice] = useState<BestPrice | null>(null);
   const [loading, setLoading] = useState(true);
@@ -65,7 +66,10 @@ export default function ProductDetailScreen() {
     <Screen grouped>
       <Stack.Screen options={{ title: name ?? "Product" }} />
 
-      <View style={{ paddingVertical: t.spacing.base, gap: 4 }}>
+      <View style={{ alignItems: "center", paddingVertical: t.spacing.lg }}>
+        <ProductImage uri={image} category={category} size={160} width={160} radius={t.radius.xl} />
+      </View>
+      <View style={{ paddingBottom: t.spacing.base, gap: 4 }}>
         <Text variant="title1">{name ?? "Product"}</Text>
         {brand != null && brand.length > 0 && <Text variant="callout" tone="secondary">{brand}</Text>}
       </View>

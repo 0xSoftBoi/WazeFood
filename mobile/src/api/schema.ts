@@ -1138,6 +1138,7 @@ export interface components {
             category: string;
             isStoreBrand: boolean;
             upc?: string | null;
+            imageUrl?: string | null;
         };
         SearchResults: {
             query: string;
@@ -1198,6 +1199,8 @@ export interface components {
             qty: number;
             name: string;
             brand?: string | null;
+            imageUrl?: string | null;
+            category?: string | null;
             best?: {
                 price?: number;
                 storeId?: string;

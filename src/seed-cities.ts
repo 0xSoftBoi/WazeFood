@@ -11,42 +11,20 @@
 // Trader Joe's / Grocery Outlet low) with deterministic per-item jitter, so the spread is realistic
 // and the optimizer finds genuine multi-store savings.
 
+import { readFileSync } from "node:fs";
 import type { App } from "./app.ts";
 
 export type CityKey = "nyc" | "sea";
 
 type StoreSeed = { id: string; retailer: string; name: string; lat: number; lng: number; tier: number };
-type ProductSeed = {
-  id: string; name: string; brand: string | null; sizeValue: number | null; sizeUnit: string | null;
-  category: string; isStoreBrand: boolean; upc: string; base: number;
-};
+type CatalogItem = { id: string; name: string; brand: string | null; category: string; base: number; q: string | null };
+type ImageInfo = { imageUrl: string; upc: string; offName: string | null };
 
-// Shared national grocery catalog — same products, priced per city/store below.
-const PRODUCTS: ProductSeed[] = [
-  { id: "prd_eggs", name: "Large Eggs 12ct", brand: "Happy Hen", sizeValue: 12, sizeUnit: "ct", category: "dairy", isStoreBrand: false, upc: "100001", base: 4.5 },
-  { id: "prd_eggs_sb", name: "Store Brand Large Eggs 12ct", brand: null, sizeValue: 12, sizeUnit: "ct", category: "dairy", isStoreBrand: true, upc: "100002", base: 3.2 },
-  { id: "prd_milk", name: "Whole Milk 1gal", brand: null, sizeValue: 1, sizeUnit: "gal", category: "dairy", isStoreBrand: false, upc: "100003", base: 4.2 },
-  { id: "prd_bread", name: "Whole Wheat Bread 20oz", brand: "Hearth", sizeValue: 20, sizeUnit: "oz", category: "bakery", isStoreBrand: false, upc: "100004", base: 3.5 },
-  { id: "prd_bananas", name: "Bananas (per lb)", brand: null, sizeValue: 1, sizeUnit: "lb", category: "produce", isStoreBrand: false, upc: "100005", base: 0.69 },
-  { id: "prd_chicken", name: "Boneless Chicken Breast (per lb)", brand: null, sizeValue: 1, sizeUnit: "lb", category: "meat", isStoreBrand: false, upc: "100006", base: 5.99 },
-  { id: "prd_beef", name: "80/20 Ground Beef (per lb)", brand: null, sizeValue: 1, sizeUnit: "lb", category: "meat", isStoreBrand: false, upc: "100007", base: 6.49 },
-  { id: "prd_rice", name: "Jasmine Rice 5lb", brand: "Golden Field", sizeValue: 5, sizeUnit: "lb", category: "pantry", isStoreBrand: false, upc: "100008", base: 8.99 },
-  { id: "prd_pasta", name: "Spaghetti 16oz", brand: "Bella", sizeValue: 16, sizeUnit: "oz", category: "pantry", isStoreBrand: false, upc: "100009", base: 1.99 },
-  { id: "prd_cereal", name: "Cheerios 18oz", brand: "General Mills", sizeValue: 18, sizeUnit: "oz", category: "pantry", isStoreBrand: false, upc: "100010", base: 5.49 },
-  { id: "prd_coffee", name: "Ground Coffee 12oz", brand: "Morning Roast", sizeValue: 12, sizeUnit: "oz", category: "pantry", isStoreBrand: false, upc: "100011", base: 8.99 },
-  { id: "prd_oj", name: "Orange Juice 52oz", brand: "Sunny", sizeValue: 52, sizeUnit: "oz", category: "beverage", isStoreBrand: false, upc: "100012", base: 4.99 },
-  { id: "prd_butter", name: "Butter 1lb", brand: "Meadow", sizeValue: 1, sizeUnit: "lb", category: "dairy", isStoreBrand: false, upc: "100013", base: 5.49 },
-  { id: "prd_cheddar", name: "Sharp Cheddar 8oz", brand: "Tillery", sizeValue: 8, sizeUnit: "oz", category: "dairy", isStoreBrand: false, upc: "100014", base: 4.49 },
-  { id: "prd_yogurt", name: "Greek Yogurt 32oz", brand: "Aegean", sizeValue: 32, sizeUnit: "oz", category: "dairy", isStoreBrand: false, upc: "100015", base: 5.99 },
-  { id: "prd_pb", name: "Peanut Butter 16oz", brand: "Nutty", sizeValue: 16, sizeUnit: "oz", category: "pantry", isStoreBrand: false, upc: "100016", base: 3.99 },
-  { id: "prd_oliveoil", name: "Olive Oil 17oz", brand: "Grove", sizeValue: 17, sizeUnit: "oz", category: "pantry", isStoreBrand: false, upc: "100017", base: 9.99 },
-  { id: "prd_paper", name: "Paper Towels 6 rolls", brand: "Plush", sizeValue: 6, sizeUnit: "ct", category: "household", isStoreBrand: false, upc: "100018", base: 9.49 },
-  // A few recognizable national brands (real UPCs) so search/scan demos resolve.
-  { id: "prd_gatorade", name: "Gatorade Lemon-Lime 28oz", brand: "Gatorade", sizeValue: 28, sizeUnit: "oz", category: "beverage", isStoreBrand: false, upc: "052000338393", base: 1.99 },
-  { id: "prd_coke", name: "Coca-Cola 12 pack 12oz cans", brand: "Coca-Cola", sizeValue: 12, sizeUnit: "ct", category: "beverage", isStoreBrand: false, upc: "049000028904", base: 8.49 },
-  { id: "prd_doritos", name: "Doritos Nacho Cheese 9.25oz", brand: "Doritos", sizeValue: 9.25, sizeUnit: "oz", category: "snack", isStoreBrand: false, upc: "028400647465", base: 5.49 },
-  { id: "prd_lays", name: "Lay's Classic Potato Chips 8oz", brand: "Lay's", sizeValue: 8, sizeUnit: "oz", category: "snack", isStoreBrand: false, upc: "028400090728", base: 4.99 },
-];
+// Real-brand catalog + real photos/UPCs (db/catalog.json + db/product-images.json, the latter
+// backfilled from Open Food Facts by scripts/fetch-product-images.mjs). Loaded at boot.
+const here = (p: string): URL => new URL(p, import.meta.url);
+const PRODUCTS: CatalogItem[] = JSON.parse(readFileSync(here("../db/catalog.json"), "utf8")).products;
+const IMAGES: Record<string, ImageInfo> = JSON.parse(readFileSync(here("../db/product-images.json"), "utf8"));
 
 const CITIES: Record<CityKey, { metro: string; label: string; center: { lat: number; lng: number }; stores: StoreSeed[] }> = {
   nyc: {
@@ -98,7 +76,12 @@ export async function seedCity(app: App, key: CityKey): Promise<CitySeedRefs> {
   const city = CITIES[key];
 
   for (const p of PRODUCTS) {
-    app.catalog.seedProduct({ id: p.id, name: p.name, brand: p.brand, sizeValue: p.sizeValue, sizeUnit: p.sizeUnit, category: p.category, isStoreBrand: p.isStoreBrand, upc: p.upc });
+    const img = IMAGES[p.id];
+    app.catalog.seedProduct({
+      id: p.id, name: p.name, brand: p.brand, sizeValue: null, sizeUnit: null,
+      category: p.category, isStoreBrand: p.id === "prd_eggs_sb",
+      upc: img?.upc ?? null, imageUrl: img?.imageUrl ?? null,
+    });
   }
   for (const s of SWAPS) app.catalog.seedSwap(s);
 
@@ -121,7 +104,7 @@ export async function seedCity(app: App, key: CityKey): Promise<CitySeedRefs> {
   app.catalog.setAisle(first.id, "prd_eggs", "Dairy");
   app.catalog.setAisle(first.id, "prd_milk", "Dairy");
   app.catalog.setAisle(first.id, "prd_cereal", "Aisle 7 · Cereal");
-  await app.bus.publish({ type: "deal.reported", storeId: city.stores[city.stores.length - 1]!.id, productId: "prd_chicken", kind: "clearance", cell: cellOf(city.stores[city.stores.length - 1]!.id) });
+  await app.bus.publish({ type: "deal.reported", storeId: city.stores[city.stores.length - 1]!.id, productId: "prd_doritos", kind: "clearance", cell: cellOf(city.stores[city.stores.length - 1]!.id) });
 
   // Honeytoken canaries (anti-scraping): real shoppers never request these.
   app.catalog.seedProduct({ id: "prd_canary_1", name: "__canary marker A__", brand: null, sizeValue: null, sizeUnit: null, category: "_canary", isStoreBrand: false, upc: "C0001" });

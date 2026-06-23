@@ -37,6 +37,7 @@ components:
         category: { type: string }
         isStoreBrand: { type: boolean }
         upc: { type: string, nullable: true }
+        imageUrl: { type: string, nullable: true }
     SearchResults:
       type: object
       required: [query, results]
@@ -111,6 +112,8 @@ components:
         qty: { type: number }
         name: { type: string }
         brand: { type: string, nullable: true }
+        imageUrl: { type: string, nullable: true }
+        category: { type: string, nullable: true }
         best:
           type: object
           nullable: true

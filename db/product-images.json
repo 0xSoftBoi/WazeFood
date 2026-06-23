@@ -1,0 +1,142 @@
+{
+  "prd_milk": {
+    "imageUrl": "https://images.openfoodfacts.org/images/products/074/236/526/4450/front_en.42.400.jpg",
+    "upc": "0742365264450",
+    "offName": "Organic Whole Milk"
+  },
+  "prd_eggs": {
+    "imageUrl": "https://images.openfoodfacts.org/images/products/071/514/111/3563/front_en.55.400.jpg",
+    "upc": "0715141113563",
+    "offName": "Eggland's Best 18 Grade A Eggs Extra Large"
+  },
+  "prd_butter": {
+    "imageUrl": "https://images.openfoodfacts.org/images/products/003/450/015/1818/front_en.28.400.jpg",
+    "upc": "0034500151818",
+    "offName": "BUTTER SALTED"
+  },
+  "prd_cheddar": {
+    "imageUrl": "https://images.openfoodfacts.org/images/products/007/283/000/5579/front_en.7.400.jpg",
+    "upc": "0072830005579",
+    "offName": "Extra Sharp White Cheddar"
+  },
+  "prd_yogurt": {
+    "imageUrl": "https://images.openfoodfacts.org/images/products/089/470/001/0137/front_en.838.400.jpg",
+    "upc": "0894700010137",
+    "offName": "Greek Yogurt Nonfat Plain"
+  },
+  "prd_creamcheese": {
+    "imageUrl": "https://images.openfoodfacts.org/images/products/762/230/044/1937/front_en.146.400.jpg",
+    "upc": "7622300441937",
+    "offName": "Philadelphia Original"
+  },
+  "prd_bread": {
+    "imageUrl": "https://images.openfoodfacts.org/images/products/001/376/402/7053/front_en.521.400.jpg",
+    "upc": "0013764027053",
+    "offName": "Organic Bread 21 Whole Grains and Seeds"
+  },
+  "prd_cereal": {
+    "imageUrl": "https://images.openfoodfacts.org/images/products/930/060/515/3721/front_en.3.400.jpg",
+    "upc": "9300605153721",
+    "offName": "Original Cheerios"
+  },
+  "prd_oats": {
+    "imageUrl": "https://images.openfoodfacts.org/images/products/003/000/001/0204/front_en.83.400.jpg",
+    "upc": "0030000010204",
+    "offName": "Old Fashioned 100% Whole Grain Rolled Oats"
+  },
+  "prd_pb": {
+    "imageUrl": "https://images.openfoodfacts.org/images/products/003/760/010/6009/front_en.16.400.jpg",
+    "upc": "0037600106009",
+    "offName": "Creamy Peanut Butter"
+  },
+  "prd_pasta": {
+    "imageUrl": "https://images.openfoodfacts.org/images/products/807/680/019/5057/front_en.3809.400.jpg",
+    "upc": "8076800195057",
+    "offName": "Spaghetti N° 5"
+  },
+  "prd_sauce": {
+    "imageUrl": "https://images.openfoodfacts.org/images/products/074/747/900/0413/front_en.71.400.jpg",
+    "upc": "0747479000413",
+    "offName": "Marinara"
+  },
+  "prd_ketchup": {
+    "imageUrl": "https://images.openfoodfacts.org/images/products/871/570/040/7760/front_en.141.400.jpg",
+    "upc": "8715700407760",
+    "offName": "Tomato Ketchup BIO"
+  },
+  "prd_mac": {
+    "imageUrl": "https://images.openfoodfacts.org/images/products/002/100/001/0875/front_en.115.400.jpg",
+    "upc": "0021000010875",
+    "offName": "mac & cheese"
+  },
+  "prd_soup": {
+    "imageUrl": "https://images.openfoodfacts.org/images/products/005/100/001/2517/front_en.66.400.jpg",
+    "upc": "0051000012517",
+    "offName": "Chicken Noodle"
+  },
+  "prd_oliveoil": {
+    "imageUrl": "https://images.openfoodfacts.org/images/products/004/179/000/1600/front_en.38.400.jpg",
+    "upc": "0041790001600",
+    "offName": "Extra Virgin Olive Oil"
+  },
+  "prd_coffee": {
+    "imageUrl": "https://images.openfoodfacts.org/images/products/002/550/030/4212/front_en.29.400.jpg",
+    "upc": "0025500304212",
+    "offName": "Classic Roast Ground Coffee"
+  },
+  "prd_pepsi": {
+    "imageUrl": "https://images.openfoodfacts.org/images/products/406/213/901/1360/front_en.3.400.jpg",
+    "upc": "4062139011360",
+    "offName": "pepsi max 12 pack"
+  },
+  "prd_gatorade": {
+    "imageUrl": "https://images.openfoodfacts.org/images/products/005/200/012/1780/front_en.4.400.jpg",
+    "upc": "0052000121780",
+    "offName": "Gatorade Thirst Quencher Lemon Lime"
+  },
+  "prd_oj": {
+    "imageUrl": "https://images.openfoodfacts.org/images/products/350/211/000/9449/front_en.151.400.jpg",
+    "upc": "3502110009449",
+    "offName": "Orangensaft"
+  },
+  "prd_water": {
+    "imageUrl": "https://images.openfoodfacts.org/images/products/007/572/000/0814/front_en.31.400.jpg",
+    "upc": "0075720000814",
+    "offName": "poland spring"
+  },
+  "prd_redbull": {
+    "imageUrl": "https://images.openfoodfacts.org/images/products/000/009/016/2602/front_en.134.400.jpg",
+    "upc": "90162602",
+    "offName": "Red Bull Energy Drink"
+  },
+  "prd_doritos": {
+    "imageUrl": "https://images.openfoodfacts.org/images/products/316/893/017/4219/front_fr.3.400.jpg",
+    "upc": "3168930174219",
+    "offName": "Tortillas chips Nacho cheese"
+  },
+  "prd_lays": {
+    "imageUrl": "https://images.openfoodfacts.org/images/products/890/149/110/1837/front_en.14.400.jpg",
+    "upc": "8901491101837",
+    "offName": "Lays Classics Salted 20rs"
+  },
+  "prd_oreo": {
+    "imageUrl": "https://images.openfoodfacts.org/images/products/762/230/028/1182/front_es.63.400.jpg",
+    "upc": "7622300281182",
+    "offName": "Oreo Original"
+  },
+  "prd_cheezit": {
+    "imageUrl": "https://images.openfoodfacts.org/images/products/002/410/022/6429/front_en.15.400.jpg",
+    "upc": "0024100226429",
+    "offName": "Cheez It Original"
+  },
+  "prd_pringles": {
+    "imageUrl": "https://images.openfoodfacts.org/images/products/505/399/015/6009/front_fr.230.400.jpg",
+    "upc": "5053990156009",
+    "offName": "Pringles Original"
+  },
+  "prd_bounty": {
+    "imageUrl": "https://images.openfoodfacts.org/images/products/003/077/205/6301/front_en.3.400.jpg",
+    "upc": "0030772056301",
+    "offName": "Bounty Paper Towels"
+  }
+}
