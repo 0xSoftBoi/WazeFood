@@ -50,7 +50,7 @@ export default function HomeScreen() {
       <View style={{ paddingTop: t.spacing.sm, paddingBottom: t.spacing.base }}>
         <View style={{ flexDirection: "row", alignItems: "center", gap: 4 }}>
           <Ionicons name="location" size={13} color={t.colors.textSecondary} />
-          <Text variant="footnote" tone="secondary">{location.source === "device" ? "Near you" : "Salt Lake City · demo"}</Text>
+          <Text variant="footnote" tone="secondary">{location.source === "device" ? "Near you" : "New York · demo"}</Text>
         </View>
         <Text variant="largeTitle">Stop overpaying.</Text>
       </View>

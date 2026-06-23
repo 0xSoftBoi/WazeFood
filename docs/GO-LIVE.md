@@ -10,9 +10,10 @@ Legend: 🟢 critical path · 🔵 optional (app degrades gracefully without it)
 
 ## Phase 0 — Decisions (15 min) 🟢
 
-- [ ] **Launch city.** The app is seeded with a Salt Lake City demo. Pick the real metro you'll
-      launch in — this drives the seed-data step below. (Research memo: seed from circulars + a few
-      power-users before the crowd takes over.)
+- [ ] **Launch city.** Recommended: **NYC** (densest walkable store competition + highest grocery
+      pain — the Uber "tight dense core" playbook applied to groceries); **Seattle** is a strong
+      second. Both are seeded with real stores + prices (`SEED_CITY`, Phase 2). Pick by where your
+      first users cluster (e.g. an influencer/referral audience).
 - [ ] **Domain** (optional but recommended), e.g. `wazefood.com` → API at `api.wazefood.com`,
       web at `app.wazefood.com`. 💲 ~$12/yr.
 
@@ -38,8 +39,10 @@ Goal: a public HTTPS API URL. Two paths (see [`DEPLOY.md`](DEPLOY.md) for detail
 
 - [ ] Set **`EXPO_PUBLIC_API_URL`** to your API URL in [`mobile/eas.json`](../mobile/eas.json)
       (per build profile).
-- [ ] **Seed the launch metro.** Ask me to wire a real seeder for your city (stores + an initial
-      price set), or import via the `/contributions` API. The demo seed is SLC only.
+- [ ] **Seed the launch metro.** Built in: set `SEED_CITY=nyc` (default) or `sea` — the app seeds
+      that metro's real stores + an initial price set on first boot (`src/seed-cities.ts`). Add more
+      cities there, or grow the data via the `/contributions` API. (NYC is the recommended launch:
+      densest walkable store competition + highest grocery-price pain.)
 - [ ] Smoke-test against prod: `cd mobile && EXPO_PUBLIC_API_URL=https://api.… npm run web`.
 
 ## Phase 3 — Optional integrations 🔵 (each independent)
