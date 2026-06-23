@@ -57,11 +57,13 @@ components:
         distanceMeters: { type: number }
     StoreNear:
       type: object
-      required: [id, name, retailer, distanceMeters]
+      required: [id, name, retailer, lat, lng, distanceMeters]
       properties:
         id: { type: string }
         name: { type: string }
         retailer: { type: string }
+        lat: { type: number }
+        lng: { type: number }
         distanceMeters: { type: number }
     StoresNear:
       type: object

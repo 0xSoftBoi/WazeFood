@@ -26,6 +26,7 @@ the Android emulator uses `10.0.2.2`.
 A full anonymous-first MVP:
 
 - **Home** — large-title search, quick chips, and a live "deals near you" feed.
+- **Nearby** — a map of stores around you (Apple Maps on iOS, Google Maps on Android) with a store list; web shows the list with a map placeholder.
 - **Product** — best nearby price (store, distance, confidence), add-to-list, watch-price.
 - **List** — every item priced, a running cart total, and one-tap **trip optimization** (savings).
 - **Scan** — `expo-camera` barcode scanner → resolves the product → jumps to its price.
@@ -55,8 +56,14 @@ eas build --profile production --platform ios       # or android / all
 eas submit --profile production --platform ios       # upload to App Store / Play
 ```
 
-Set the production API URL in `eas.json` (`EXPO_PUBLIC_API_URL`). App icon/splash artwork
-(`assets/icon.png`, `assets/splash.png`) is the one remaining asset to add before submission.
+Set the production API URL in `eas.json` (`EXPO_PUBLIC_API_URL`). Icon/splash artwork is generated
+(`assets/`, regenerate with `node scripts/gen-icons.mjs` + sharp).
+
+**Maps:** iOS uses Apple Maps (no key). For the Android map, add a Google Maps key to `app.json`:
+
+```json
+"android": { "config": { "googleMaps": { "apiKey": "YOUR_ANDROID_MAPS_KEY" } } }
+```
 
 ## Next
 

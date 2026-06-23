@@ -1139,6 +1139,8 @@ export interface components {
             id: string;
             name: string;
             retailer: string;
+            lat: number;
+            lng: number;
             distanceMeters: number;
         };
         StoresNear: {
