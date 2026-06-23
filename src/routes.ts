@@ -179,7 +179,7 @@ export function registerRoutes(router: Router, app: App): Router {
     if (!Number.isFinite(lat) || !Number.isFinite(lng)) throw badRequest("lat, lng required");
     const radius = Number(ctx.query.get("radius") ?? "25000");
     const stores = app.catalog.nearbyStores({ lat, lng }, Number.isFinite(radius) ? radius : 25000).map((s) => ({
-      id: s.id, name: s.name, retailer: s.retailer, distanceMeters: Math.round(s.distanceMeters),
+      id: s.id, name: s.name, retailer: s.retailer, lat: s.lat, lng: s.lng, distanceMeters: Math.round(s.distanceMeters),
     }));
     return ok({ stores });
   });

@@ -22,6 +22,7 @@ export default function TabsLayout() {
       }}
     >
       <Tabs.Screen name="index" options={{ title: "Home", tabBarIcon: ({ color, size }) => <Ionicons name="home" size={size} color={color} /> }} />
+      <Tabs.Screen name="nearby" options={{ title: "Nearby", tabBarIcon: ({ color, size }) => <Ionicons name="map" size={size} color={color} /> }} />
       <Tabs.Screen name="list" options={{ title: "List", tabBarIcon: ({ color, size }) => <Ionicons name="list" size={size} color={color} /> }} />
       <Tabs.Screen name="scan" options={{ title: "Scan", tabBarIcon: ({ color, size }) => <Ionicons name="scan" size={size} color={color} /> }} />
       <Tabs.Screen name="profile" options={{ title: "You", tabBarIcon: ({ color, size }) => <Ionicons name="person" size={size} color={color} /> }} />
